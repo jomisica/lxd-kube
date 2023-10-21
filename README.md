@@ -1,54 +1,53 @@
 # lxd-projects-provisioning-kubernetes
-Has been written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
+Written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
 
 ## Description:
-Create Kubernetes clusters inside LXD containers 
+This README explains how to create Kubernetes clusters inside LXD containers.
 
-### Setting up K8s Cluster using LXC/LXD 
-> **Note:** For development purpose and not recommended for Production use
+### Setting up a K8s Cluster using LXC/LXD 
+> **Note:** These instructions are for development purposes and are not recommended for production use.
 
-#### Installing the LXC on Ubuntu 
-```
+#### Installing LXC on Ubuntu 
+```shell
 $ sudo snap install lxd
 ```
 
 #### Configuring LXD
-We must create a bridge in Linux first and specify in LXD the bridge we want LXD to use. To be able to use the examples we created a bridge with the name "lxdbridge".
 
+Before proceeding, you must create a bridge in Linux and specify the bridge you want LXD to use. We have created a bridge named "lxdbridge" for the provided examples.
 
-You can follow this article on how to create a bridge in Linux if you need or any other or several if you prefer.
-https://linuxhint.com/bridge-utils-ubuntu/
+If you need guidance on creating a bridge in Linux, you can refer to this article on bridge-utils in Ubuntu or any other resource of your choice.
 
+To configure LXD, accept the default options, except for the bridge configuration. Do not accept the creation of the bridge by default. LXD will prompt you to specify a bridge to use, and you should provide the name of the bridge you created, which is "lxdbridge."
 
-To configure lxd we must accept the default options, except the bridge configuration. We must not accept the creation of the bridge by default and lxd will ask us if we want to specify a bridge to use, and we supply the bridge we created "lxdbridge".
+Having an external bridge can be useful for assigning a MAC address to each profile, ensuring that the containers maintain a consistent IP. Additionally, as Kubernetes relies on domain configuration, it's essential to ensure that the domain name you provide in the list of nodes resolves to the IP of each node.
 
-Having an external bridge is useful, so we can add a MAC to each profile so that the containers always maintain the same IP.
+If your DHCP server allows MAC reservations, create a reservation for each MAC address in the profile of each container. Make sure not to use MAC addresses associated with network devices in your network.
 
-Also, as Kubernetes is configured via domain, as in professional clouds, the domain name we provide in the list of machines must resolve to the IP of each machine.
+If your DNS allows you to create records, add one for each cluster using the domain of your choice. If not, configure your hosts file to map each domain to the IP address of each LXD instance.
 
+### SSH KEYS
 
-If your DHCP server allows you to create reservations, you must create a reservation for each MAC that is in the profile of each container. This MAC can be changed, however, you must not enter any MAC of any network device you use on your network.
-
-If your DNS allows you to create records, you must add one for each cluster, with the domain you choose. If not, you must configure your hosts file to point each domain to the IP of each LXD instance.
-
-#### SSH KEYS
-Inside the lxd/SSH-KEY directory there is an example PRIVATE and PUBLIC KEY. The public key will be distributed across all containers. This option is useful for me to use with ansible or even directly via ssh to test.
+Inside the lxd/SSH-KEY directory, you will find an example PRIVATE and PUBLIC KEY. The public key will be distributed to all containers. This option is useful for using with Ansible or for direct SSH access for testing purposes.
 
 You can create a new key pair and place it in the same location with the same name.
+Clone the project
 
-#### Clone the project
-You can clone the repository wherever you want.
-```
+You can clone the repository to your preferred location.
+
+```shell
 $ git clone https://github.com/jomisica/lxd-projects-provisioning-kubernetes.git
 ```
 
-#### Enter the project directory
-```
+Access the project directory
+
+```shell
 $ cd lxd-projects-provisioning-kubernetes
 ```
 
 ### List of projects
-This list of projects is for my use, you should modify it to suit your needs, I will try to explain each column as best as possible. What is your role in creating clusters.
+
+The following list of projects is provided for your reference, but you should modify it to meet your specific requirements. We will attempt to explain each column as clearly as possible, helping you understand your role in creating clusters.
 
 | LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
 | --------------- | --------------- | ---------------------------- | ------------------- | -------- | ---------------------------- | ---------------- | -------------- | ----------- |
@@ -62,81 +61,83 @@ This list of projects is for my use, you should modify it to suit your needs, I 
 | project-test    | k8s-test-kworker1| project-test-kworker1       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project-test    | k8s-test-kworker2| project-test-kworker2       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 
+The columns starting with LXD_ contain the data for configuring the containers, with the first four columns providing key details.
 
-The columns starting with LXD_ contain the data for configuring the containers, the first four columns being.
+The columns starting with K8S_ contain Kubernetes configuration data, encompassing the remaining columns.
 
-The columns starting with K8S_ contain the Kubernetes configuration data, the remaining columns.
+#### The LXD_PROJECT column
 
-##### The LXD_PROJECT column
-In LXD we can create projects, which separate containers or virtual machines for a given context, similar to Kubernetes namespaces. This way we can better manage each Kubernetes cluster. All containers in a given cluster are in an LXD project.
+In LXD, we have the flexibility to create projects, similar to Kubernetes namespaces, which help segregate containers or virtual machines based on context. This enables better management of each Kubernetes cluster, ensuring all containers within a cluster reside in the same LXD project.
 
-This column defines the name of the project. If we have more than one, we must give each project different names.
+This column defines the project name, and it should be unique for each project.
 
-##### The LXC PROFILE column
-In LXD we can create profiles, which allow us to describe what we want. Be it network options, storage, permissions, etc. And it allows you to add a profile to be used by a specific container. Settings that do not exist in this personalized profile will be filled in with those of the default profile. This way it allows us to have profile files with only the options we want that are different from those existing in the default profile.
+#### The LXD_PROFILE column
 
-This column defines the name of the file without the extension, which must be within the lxd/profiles directory that we want to use for each container in our cluster.
+LXD allows the creation of profiles, which can be used to define various aspects, including network options, storage, permissions, and more. You can assign a profile to a specific container, and any settings not specified in the custom profile will default to the settings in the default profile. This allows you to create profiles with only the options that differ from those in the default profile.
 
-Profiles must have different names.
+This column specifies the name of the profile file (without the extension) located within the lxd/profiles directory. Each container in the cluster should use a different profile.
 
-##### The LXD_CONTAINER_NAME/HOSTNAME column
-In LXD, containers must have different names, although they may have the same names in different projects.
-However, as the hostname defaults to the name of the container, we have to create containers with different names. Because the machines are called over the network, having more than one container with the same name will not work.
+#### The LXD_CONTAINER_NAME/HOSTNAME column
 
-This column describes the name/hostname of each container.
+In LXD, containers must have unique names, even if they share the same name across different projects. This is because the hostname defaults to the container name, and having multiple containers with the same name will lead to network conflicts.
 
-##### The LXC_CONTAINER_IMAGE column
-In LXD, we can use multiple system images that we want to use, for other purposes.
-However, the script only works with the APT package system, and has only been tested with images from ubuntu:18.04, ubuntu:20.04,ubuntu:22.04.
+This column defines the name or hostname for each container.
 
-This column describes the image name and version to be used by each container.
+#### The LXC_CONTAINER_IMAGE column
 
-##### The K8S_TYPE column
+While LXD supports multiple system images for different purposes, the script provided here works with the APT package system and has been tested with images from ubuntu:18.04, ubuntu:20.04, and ubuntu:22.04.
 
-This column is used by the script to identify whether to configure Kubernetes as a master plane node or worker none.
+This column specifies the image name and version for each container.
 
-This column can have two values (master/worker).
+#### The K8S_TYPE column
 
-##### The K8S_API_ENDPOINT column
+This column is used by the script to determine whether to configure Kubernetes as a master or worker node.
 
-This column describes the domain to use with the master plane. This domain must have hostname.domain.xyz. The hostname will be the name given in the LXD_CONTAINER_NAME/HOSTNAME column.
+This column can have two values: "master" or "worker."
 
-This domain is used to access the Kubernetes API by domain instead of IP. The configuration for kubectl will be generated for each cluster with the domain provided in this column.
+#### The K8S_API_ENDPOINT column
 
-Internally, Kubernetes uses this domain in the cluster's certificates.
+This column defines the domain to use with the master plane. The domain should follow the format hostname.domain.xyz, where the hostname corresponds to the name specified in
+the LXD_CONTAINER_NAME/HOSTNAME column.
 
-It does not need to be a true domain however, when resolving the domain to IP it must point to the IP of the container of this master plane. However, it can be a real domain and be used on the internet.
+This domain is used to access the Kubernetes API via a domain name rather than an IP address. The script will generate kubectl configurations for each cluster using the domain provided in this column.
 
-##### The K8S_CLUSTER_NAME column
+Internally, Kubernetes relies on this domain in its cluster certificates.
 
-Since we can have more than one cluster, we have to give each Kubernetes cluster different names. Let's imagine that we have the main production cluster, another for application development and another for testing applications or configuration updates that may or may not go wrong, etc.
+The domain doesn't necessarily have to be a real, publicly accessible domain, but when resolving the domain to an IP address, it must point to the IP of the container that serves as the master node. However, it can be a real domain suitable for internet use.
 
-This column describes the name of the Kubernetes cluster.
+#### The K8S_CLUSTER_NAME column
 
-##### The K8S_POD_SUBNET column
+Given that you may have multiple clusters, each Kubernetes cluster should have a unique name. For instance, you might have a primary production cluster, another for application development, and yet another for testing applications or configuration updates. Differentiate these clusters by providing distinct names in this column.
 
-As in Kubernetes, communications between pods and nodes are done via IP. We must avoid any collision of IPs in our clusters. To do this, we provide a different network for each cluster to use in its pod network.
+This column specifies the name of each Kubernetes cluster.
 
-This column describes the network we want to use in our cluster, we only need to describe the network to use in the master plane of each cluster.
+#### The K8S_POD_SUBNET column
 
-##### The K8S_VERSION column
+In Kubernetes, communication between pods and nodes relies on IP addresses. To avoid IP address conflicts in your clusters, each cluster should use a different network for its pod network.
 
-Kubernetes has many versions that we can use for our clusters. The latest version to date is defined in the configuration file. However, if we want other older versions we can use at least version 1.22.0. This was the oldest functional version I tested, however it is possible that the script can configure even older versions.
+This column specifies the network to be used within the master plane of each cluster.
 
-This column describes the version to be used by Kubernetes, it must be the same on all nodes in each cluster.
-However, we can have clusters with different versions
+#### The K8S_VERSION column
 
-#### Run the script
-The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
+Kubernetes offers various versions for cluster deployment. The script uses the latest version defined in the configuration file. However, you have the flexibility to use older versions starting from at least version 1.22.0. This script has been tested with versions as old as 1.22.0, and it might support even older versions.
 
-These settings can and should be changed to suit each person’s needs.
+This column specifies the Kubernetes version to be used, ensuring consistency across all nodes within each cluster. However, you have the option to configure clusters with different versions.
 
-Within the lxd/profiles directory there is a profile for each of the containers that are used for kubernetes, these profiles must be configured accordingly. In this case I use a bridge named lxdbridge.
+### Running the script
 
-I will improve and comment on how to configure and use this script, but with time.
-```
+The file cluster-config-data.csv defines the number of projects to be created and their properties. The provided data in this file creates three projects for LXD, with each project containing a master node and two worker nodes.
+
+You can and should adjust these settings to align with your specific requirements.
+
+Inside the lxd/profiles directory, you will find a profile for each container used in your Kubernetes clusters. These profiles should be configured as needed. In the provided examples, a bridge named "lxdbridge" is used.
+
+We plan to provide additional documentation on how to configure and use this script in the future.
+
+```shell
 $ bash lxd-kube provision
 ```
 
-## Problem/BUGS report:
-If you have problems running the script, let me know so it can be improved.
+Problem/BUGS report:
+
+If you encounter any issues while running the script, please report them to help us make improvements.
