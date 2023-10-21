@@ -66,6 +66,11 @@ In LXD we can create projects, which separate containers or virtual machines for
 
 This column defines the name of the project. If we have more than one, we must give each project different names.
 
+##### The LXC PROFILE column
+In LXD we can create profiles, which allow us to describe what we want. Be it network options, storage, permissions, etc. And it allows you to add a profile to be used by a specific container. Settings that do not exist in this personalized profile will be filled in with those of the default profile. This way it allows us to have profile files with only the options we want that are different from those existing in the default profile.
+
+This column defines the name of the file without the extension, which must be within the lxd/profiles directory that we want to use for each container in our cluster.
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
