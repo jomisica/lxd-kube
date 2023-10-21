@@ -91,6 +91,17 @@ This column is used by the script to identify whether to configure Kubernetes as
 
 This column can have two values (master/worker).
 
+##### The K8S_API_ENDPOINT column
+
+This column describes the domain to use with the master plane. This domain must have hostname.domain.xyz. The hostname will be the name given in the LXD_CONTAINER_NAME/HOSTNAME column.
+
+This domain is used to access the Kubernetes API by domain instead of IP. The configuration for kubectl will be generated for each cluster with the domain provided in this column.
+
+Internally, Kubernetes uses this domain in the cluster's certificates.
+
+It does not need to be a true domain however, when resolving the domain to IP it must point to the IP of the container of this master plane. However, it can be a real domain and be used on the internet.
+
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
