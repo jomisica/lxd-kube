@@ -123,7 +123,7 @@ This column describes the network we want to use in our cluster, we only need to
 
 Kubernetes has many versions that we can use for our clusters. The latest version to date is defined in the configuration file. However, if we want other older versions we can use at least version 1.22.0. This was the oldest functional version I tested, however it is possible that the script can configure even older versions.
 
-This column describes the version to be used by Kubernetes, it must be the same on all machines in each cluster.
+This column describes the version to be used by Kubernetes, it must be the same on all nodes in each cluster.
 However, we can have clusters with different versions
 
 #### Run the script
