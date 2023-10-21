@@ -101,6 +101,11 @@ Internally, Kubernetes uses this domain in the cluster's certificates.
 
 It does not need to be a true domain however, when resolving the domain to IP it must point to the IP of the container of this master plane. However, it can be a real domain and be used on the internet.
 
+##### The K8S_CLUSTER_NAME column
+
+Since we can have more than one cluster, we have to give each Kubernetes cluster different names. Let's imagine that we have the main production cluster, another for application development and another for testing applications or configuration updates that may or may not go wrong, etc.
+
+This column describes the name of the Kubernetes cluster.
 
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
