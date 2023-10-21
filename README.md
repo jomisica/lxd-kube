@@ -26,7 +26,7 @@ If your DHCP server allows you to create reservations, you must create a reserva
 If your DNS allows you to create records, you must add one for each cluster, with the domain you choose. If not, you must configure your hosts file to point each domain to the IP of each LXD instance.
 
 #### SSH KEYS
-Inside the lxd/SSH-KEY directory there is an example private and PUBLIC KEY. The public key will be distributed across all containers. This option is useful for me to use with ansible or even via ssh to test.
+Inside the lxd/SSH-KEY directory there is an example PRIVATE and PUBLIC KEY. The public key will be distributed across all containers. This option is useful for me to use with ansible or even directly via ssh to test.
 
 You can create a new key pair and place it in the same location with the same name.
 
