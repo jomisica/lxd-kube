@@ -57,6 +57,12 @@ This list of projects is for my use, you should modify it to suit your needs, I 
 | project-test    | k8s-test-kworker2| project-test-kworker2       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 
 
+The columns starting with LXD_ contain the data for configuring the containers, the first four columns being.
+
+The columns starting with K8S_ contain the data for the kubernetes configuration, the remaining columns are.
+
+
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
