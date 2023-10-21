@@ -6,6 +6,14 @@
 $ sudo snap install lxd
 ```
 
+#### Configuring LXD
+We must create a bridge in Linux first and specify in LXD the bridge we want LXD to use. To be able to use the examples we created a bridge with the name "lxdbridge".
+
+
+You can follow this article on how to create a bridge in Linux if you need or any other or several if you prefer.
+https://linuxhint.com/bridge-utils-ubuntu/
+
+
 #### Clone the project
 You can clone the repository wherever you want.
 ```
