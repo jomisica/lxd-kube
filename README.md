@@ -71,6 +71,14 @@ In LXD we can create profiles, which allow us to describe what we want. Be it ne
 
 This column defines the name of the file without the extension, which must be within the lxd/profiles directory that we want to use for each container in our cluster.
 
+Profiles must have different names.
+
+##### The LXD_CONTAINER_NAME/HOSTNAME column
+In LXD, containers must have different names, although they may have the same names in different projects.
+However, as the hostname defaults to the name of the container, we have to create containers with different names. Because the machines are called over the network, having more than one container with the same name will not work.
+
+This column describes the name/hostname of each container.
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
