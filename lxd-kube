@@ -534,11 +534,6 @@ provision() {
     echo -e "## END of Kubernetes cluster provisioning"
 
 }
-function join_by {
-    local IFS="$1"
-    shift
-    echo "$*"
-}
 
 prepare_input_file() {
     content=($(cat "cluster-config-data.csv"))
@@ -546,15 +541,11 @@ prepare_input_file() {
     read -d '' -r -a lines <"cluster-config-data.csv"
 
     DEPLOY_LIST=()
-    #printf "line 5: %s\n" "${lines[2]}"
     a=${#lines[@]}
     for ((i = 1; i <= ${#lines[@]}; i++)); do
-        #echo "${lines[$i]}"
         local IFS=","
         read -a values <<<"${lines[$i]}"
-        #echo ${#values[@]}
         if [ ${#values[@]} -lt 9 ]; then
-            #unset lines[$i]
             continue
         fi
 
@@ -570,9 +561,6 @@ prepare_input_file() {
 
         DEPLOY_LIST+=("$(echo -e "${values0},${values1},${values2},${values3},${values4},${values5},${values6},${values7},${values8}")")
     done
-
-    #echo ${#DEPLOY_LIST[@]}
-
 }
 
 verifyconfig() {
