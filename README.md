@@ -16,6 +16,10 @@ https://linuxhint.com/bridge-utils-ubuntu/
 
 To configure lxd we must accept the default options, except the bridge configuration. We must not accept the creation of the bridge by default and lxd will ask us if we want to specify a bridge to use, and we supply the bridge we created "lxdbridge".
 
+Having an external bridge is useful, so we can add a MAC to each profile so that the containers always maintain the same IP.
+
+Also, as Kubernetes is configured via domain, as in professional clouds, the domain name we provide in the list of machines must resolve to the IP of each machine.
+
 #### Clone the project
 You can clone the repository wherever you want.
 ```
