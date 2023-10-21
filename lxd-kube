@@ -428,7 +428,7 @@ provision_kubernetes_cluster() {
             export CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${values[0]}" exec "${values[2]}" -- bash)
             envsubst <${TEMPLATE_DIR}/kubeadm-config.yaml >"${KUBECTL_CONFIGS_DIR}"/kubeconfig
 
-            echo "#### Processing the kubeadm-flannel.yaml template kubeadm-join-config.yaml to join workers"
+            echo "#### Processing the kubeadm-join-config.yaml template to join workers"
             if ! [ -f ${TEMPLATE_DIR}/kubeadm-init-config.yaml ]; then
                 echo "##### [$?] Error, unable to find template kubeadm-join-config.yaml"
                 exit 255
@@ -465,12 +465,33 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            mkdir -p kubernetes/logs/"${values[0]}"/"${values[2]}"/
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
             echo "export K8S_VERSION=${values[8]}; $(cat 'kubernetes/bootstrap/install.sh')" | lxc --project "${values[0]}" exec "${values[2]}" bash >>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
-            echo "#### Joining the worker to the cluster"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The required software has been installed"
+            else
+                echo "##### [$?] Errors appeared when installing the necessary software"
+                exit 255
+            fi
+
+            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${values[2]}"
             lxc --project "${values[0]}" file push -p ${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml ${values[2]}/root/kubeadm-join-config.yaml --uid 0
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${values[2]}"
+            else
+                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${values[2]}"
+                exit 255
+            fi
+
+            echo "#### Joining the worker to the cluster"
             lxc --project "${values[0]}" exec "${values[2]}" -- kubeadm --v=5 join --config /root/kubeadm-join-config.yaml --ignore-preflight-errors=all >kubernetes/logs/"${values[0]}"/"${values[2]}"/kubeadmjoin.log 2>&1
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The worker has been successfully joined"
+            else
+                echo "##### [$?] Error joining the worker"
+                exit 255
+            fi
+
             echo "### END Configuring the worker: ${values[2]}"
             echo
         fi
