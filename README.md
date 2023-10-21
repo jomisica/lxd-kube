@@ -14,11 +14,15 @@ You can follow this article on how to create a bridge in Linux if you need or an
 https://linuxhint.com/bridge-utils-ubuntu/
 
 
+To configure lxd we must accept the default options, except the bridge configuration. We must not accept the creation of the bridge by default and lxd will ask us if we want to specify a bridge to use, and we supply the bridge we created "lxdbridge".
+
 #### Clone the project
 You can clone the repository wherever you want.
 ```
 $ git clone https://github.com/jomisica/lxd-projects-provisioning-kubernetes.git
 ```
+
+
 
 #### Enter the project directory
 ```
