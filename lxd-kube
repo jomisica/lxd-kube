@@ -122,8 +122,6 @@ create_lxc_profiles() {
     for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
 
         read -a values <<<"${DEPLOY_LIST[$i]}"
-        local LXD_PROJECT=$(echo "${values[0]}" | tr -d '\n\r[:space:]')
-        local LXD_PROFILE=$(echo "${values[1]}" | tr -d '\n\r[:space:]')
 
         local PROFILES=()
         get_profiles "${values[0]}"
