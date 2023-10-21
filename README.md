@@ -20,6 +20,11 @@ Having an external bridge is useful, so we can add a MAC to each profile so that
 
 Also, as Kubernetes is configured via domain, as in professional clouds, the domain name we provide in the list of machines must resolve to the IP of each machine.
 
+
+If your DHCP server allows you to create reservations, you must create a reservation for each MAC that is in the profile of each container. This MAC can be changed, however, you must not enter any MAC of any network device you use on your network.
+
+If your DNS allows you to create records, you must add one for each cluster, with the domain you choose. If not, you must configure your hosts file to point each domain to the IP of each LXD instance.
+
 #### Clone the project
 You can clone the repository wherever you want.
 ```
