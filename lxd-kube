@@ -3,15 +3,9 @@
 LXD_DONE=false
 
 usage() {
-    echo "Usage: lxd-kube [provision|destroyinstances|destroyinstances]"
+    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects]"
     exit 1
 }
-
-create_container() {
-    lxc launch ubuntu:20.04 xxxxx --project default --verbose
-    return
-}
-
 get_projects() {
     local fields
     local IFS=,
