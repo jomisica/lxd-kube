@@ -59,7 +59,7 @@ This list of projects is for my use, you should modify it to suit your needs, I 
 
 The columns starting with LXD_ contain the data for configuring the containers, the first four columns being.
 
-The columns starting with K8S_ contain the data for the kubernetes configuration, the remaining columns are.
+The columns starting with K8S_ contain the Kubernetes configuration data, the remaining columns.
 
 ##### The LXD_PROJECT column
 In LXD we can create projects, which separate containers or virtual machines for a given context, similar to Kubernetes namespaces. This way we can better manage each Kubernetes cluster. All containers in a given cluster are in an LXD project.
@@ -84,6 +84,12 @@ In LXD, we can use multiple system images that we want to use, for other purpose
 However, the script only works with the APT package system, and has only been tested with images from ubuntu:18.04, ubuntu:20.04,ubuntu:22.04.
 
 This column describes the image name and version to be used by each container.
+
+##### The K8S_TYPE column
+
+This column is used by the script to identify whether to configure Kubernetes as a master plane node or worker none.
+
+This column can have two master/worker values.
 
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
