@@ -79,6 +79,12 @@ However, as the hostname defaults to the name of the container, we have to creat
 
 This column describes the name/hostname of each container.
 
+##### The LXC_CONTAINER_IMAGE column
+In LXD, we can use multiple system images that we want to use, for other purposes.
+However, the script only works with the APT package system, and has only been tested with images from ubuntu:18.04, ubuntu:20.04,ubuntu:22.04.
+
+This column describes the image name and version to be used by each container.
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
