@@ -1,3 +1,9 @@
+# log-credentials
+Has been written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
+
+## Description:
+Create Kubernetes clusters inside LXD containers 
+
 ### Setting up K8s Cluster using LXC/LXD 
 > **Note:** For development purpose and not recommended for Production use
 
@@ -131,3 +137,6 @@ I will improve and comment on how to configure and use this script, but with tim
 ```
 $ bash lxd-kube provision
 ```
+
+## Problem/BUGS report:
+If you have problems running the script, let me know so it can be improved.
