@@ -32,20 +32,6 @@ Inside the lxd/SSH-KEY directory, you will find an example PRIVATE and PUBLIC KE
 
 You can create a new key pair and place it in the same location with the same name.
 
-### Clone the project
-
-You can clone the repository to your preferred location.
-
-```shell
-$ git clone https://github.com/jomisica/lxd-projects-provisioning-kubernetes.git
-```
-
-Access the project directory
-
-```shell
-$ cd lxd-projects-provisioning-kubernetes
-```
-
 ### List of projects
 
 The following list of projects is provided for your reference, but you should modify it to meet your specific requirements. We will attempt to explain each column as clearly as possible, helping you understand your role in creating clusters.
@@ -124,6 +110,54 @@ This column specifies the network to be used in the cluster. It just needs to be
 Kubernetes offers various versions for cluster deployment. The script uses the latest version defined in the configuration file. However, you have the flexibility to use older versions starting from at least version 1.22.0. This script has been tested with versions as old as 1.22.0, and it might support even older versions.
 
 This column specifies the Kubernetes version to be used, ensuring consistency across all nodes within each cluster. However, you have the option to configure clusters with different versions.
+
+### LXD Profiles
+
+Each container in the cluster is assigned a profile. This is necessary so that we can specify a static MAC address for each container and specify the bridge that the container should belong to.
+
+This way we also have more freedom to assign CPU and RAM resources to each container.
+
+The "name" tag must contain the same file name without the extension, the same name specified in the node list.
+
+```yaml
+config:
+  limits.cpu: "4"
+  limits.memory: 4GB
+  limits.memory.swap: "false"
+  linux.kernel_modules: ip_tables,ip6_tables,nf_nat,overlay,br_netfilter
+  raw.lxc: "lxc.apparmor.profile=unconfined\nlxc.cap.drop= \nlxc.cgroup.devices.allow=a\nlxc.mount.auto=proc:rw sys:rw\nlxc.mount.entry = /dev/kmsg dev/kmsg none defaults,bind,create=file"
+  security.privileged: "true"
+  security.nesting: "true"
+description: LXD profile for Kubernetes
+devices:
+  eth0:
+    hwaddr: 00:16:3e:00:c0:88
+    name: eth0
+    nictype: bridged
+    parent: lxdbridge
+    type: nic
+  root:
+    path: /
+    pool: default
+    type: disk
+name: k8s-kmaster
+used_by: []
+```
+
+
+### Clone the project
+
+You can clone the repository to your preferred location.
+
+```shell
+$ git clone https://github.com/jomisica/lxd-projects-provisioning-kubernetes.git
+```
+
+Access the project directory
+
+```shell
+$ cd lxd-projects-provisioning-kubernetes
+```
 
 ### Running the script
 
