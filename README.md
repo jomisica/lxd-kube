@@ -1,4 +1,4 @@
-# log-credentials
+# lxd-projects-provisioning-kubernetes
 Has been written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
 
 ## Description:
