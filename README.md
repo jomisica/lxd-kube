@@ -126,7 +126,7 @@ This column specifies the Kubernetes version to be used, ensuring consistency ac
 
 ### Running the script
 
-The file cluster-config-data.csv defines the number of projects to be created and their properties. The provided data in this file creates three projects for LXD, with each project containing a master node and two worker nodes.
+The "cluster-config-data.csv" file defines the number of projects to be created and their properties. The data provided in this file creates three projects for LXD, with each project containing one master node and two worker nodes for Kubernetes.
 
 You can and should adjust these settings to align with your specific requirements.
 
