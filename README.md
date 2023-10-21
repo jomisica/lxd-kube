@@ -62,7 +62,7 @@ The columns starting with LXD_ contain the data for configuring the containers, 
 The columns starting with K8S_ contain the data for the kubernetes configuration, the remaining columns are.
 
 ##### The LXD_PROJECT column
-In LXD we can create projects, which separate containers or virtual machines for a given context, similar to Kubernetes namespaces. This way we can better manage each Kubernetes cluster. all containers in a given cluster are in an LXD project.
+In LXD we can create projects, which separate containers or virtual machines for a given context, similar to Kubernetes namespaces. This way we can better manage each Kubernetes cluster. All containers in a given cluster are in an LXD project.
 
 This column defines the name of the project. If we have more than one, we must give each project different names.
 
