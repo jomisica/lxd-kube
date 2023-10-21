@@ -107,6 +107,12 @@ Since we can have more than one cluster, we have to give each Kubernetes cluster
 
 This column describes the name of the Kubernetes cluster.
 
+##### The K8S_POD_SUBNET column
+
+As in Kubernetes, communications between pods and nodes are done via IP. We must avoid any collision of IPs in our clusters. To do this, we provide a different network for each cluster to use in its pod network.
+
+This column describes the network we want to use in our cluster, we only need to describe the network to use in the master plane of each cluster.
+
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
 
