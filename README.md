@@ -89,7 +89,7 @@ This column describes the image name and version to be used by each container.
 
 This column is used by the script to identify whether to configure Kubernetes as a master plane node or worker none.
 
-This column can have two master/worker values.
+This column can have two values (master/worker).
 
 #### Run the script
 The cluster-config-data.csv file defines how many projects will be created and their properties. In the cluster-config-data.csv file there are three projects for LXD, in each project a master plane and two workers are created.
