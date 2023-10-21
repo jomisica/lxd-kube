@@ -116,7 +116,7 @@ This column specifies the name of each Kubernetes cluster.
 
 In Kubernetes, communication between pods and nodes relies on IP addresses. To avoid IP address conflicts in your clusters, each cluster should use a different network for its pod network.
 
-This column specifies the network to be used in the cluster. It just needs to be specified in the master plans.
+This column specifies the network to be used in the cluster. It just needs to be specified in the master plans nodes.
 
 #### The K8S_VERSION column
 
