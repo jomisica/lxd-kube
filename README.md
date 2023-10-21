@@ -31,7 +31,8 @@ If your DNS allows you to create records, add one for each cluster using the dom
 Inside the lxd/SSH-KEY directory, you will find an example PRIVATE and PUBLIC KEY. The public key will be distributed to all containers. This option is useful for using with Ansible or for direct SSH access for testing purposes.
 
 You can create a new key pair and place it in the same location with the same name.
-Clone the project
+
+### Clone the project
 
 You can clone the repository to your preferred location.
 
