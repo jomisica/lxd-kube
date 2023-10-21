@@ -5,3 +5,19 @@
 ```
 $ sudo snap install lxd
 ```
+
+#### Clone the project
+You can clone the repository wherever you want.
+```
+$ git clone https://github.com/jomisica/lxd-projects-provisioning-kubernetes.git
+```
+
+#### Enter the project directory
+```
+$ cd lxd-projects-provisioning-kubernetes
+```
+
+#### Run the script
+```
+$ bash lxd-kube provision
+```
