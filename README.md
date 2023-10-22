@@ -16,7 +16,7 @@ $ sudo snap install lxd
 
 Before proceeding, you must create a bridge in Linux and specify the bridge you want LXD to use. We have created a bridge named "lxdbridge" for the provided examples.
 
-If you need guidance on creating a bridge in Linux, you can refer to this article on bridge-utils in Ubuntu or any other resource of your choice.
+If you need guidance on creating a bridge in Linux, you can refer to [this article](https://linuxhint.com/bridge-utils-ubuntu/) on bridge-utils in Ubuntu or any other resource of your choice.
 
 To configure LXD, accept the default options, except for the bridge configuration. Do not accept the creation of the bridge by default. LXD will prompt you to specify a bridge to use, and you should provide the name of the bridge you created, which is "lxdbridge."
 
