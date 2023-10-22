@@ -7,12 +7,17 @@ This README explains how to create Kubernetes clusters inside LXD containers.
 ### Setting up a K8s Cluster using LXC/LXD 
 > **Note:** These instructions are for development purposes and are not recommended for production use.
 
-#### Installing LXC on Ubuntu 
+#### Installing LXC on Ubuntu
+
+You can see more information on how to install and configure LXD at [this link](https://documentation.ubuntu.com/lxd/en/latest/installing/).
+
 ```shell
 $ sudo snap install lxd
 ```
 
 #### Configuring LXD
+
+
 
 Before proceeding, you must create a bridge in Linux and specify the bridge you want LXD to use. We have created a bridge named "lxdbridge" for the provided examples.
 
