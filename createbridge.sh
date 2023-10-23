@@ -37,9 +37,6 @@ brctl addif lxdbridge "${DEFAULT_IF}"
 
 # netplan config file
 CONFIG_NETPLAN_FILE=$(grep -r "${DEFAULT_IF}:" /etc/netplan/ | awk '{sub(/:.*/, ""); print}')
-if [ $? -eq 0 ]; then
-    echo "[OK] A bridge 'lxdbridge' já existe."
-fi
 
 cp "${CONFIG_NETPLAN_FILE}" /root
 
