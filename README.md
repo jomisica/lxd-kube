@@ -215,3 +215,15 @@ $ bash lxd-kube destroyprojects
 ### Problem/BUGS report:
 
 If you encounter any issues while running the script, please report them to help us make improvements.
+
+### Suggestion for Improvements
+
+If you identify opportunities for improvement in this project or encounter issues you'd like to report, your contribution is essential to make the project more robust and valuable. We actively encourage the user community to get involved and collaborate. Here are some ways to participate:
+
+- **Report Issues**: If you come across any problems, bugs, or unexpected behavior while using this project, please report them on our [issues page](https://github.com/jomisica/lxd-projects-provisioning-kubernetes/issues). Make sure to provide detailed information so that we can understand and address the issue.
+
+- **Make Suggestions**: If you have ideas for enhancing the project, adding features, or optimizing the user experience, feel free to share them on our [issues page](https://github.com/jomisica/lxd-projects-provisioning-kubernetes/issues). We'd love to hear your suggestions.
+
+- **Contribute Code**: If you're a developer and want to contribute directly to the project, please consider creating pull requests (PRs).
+
+Remember that your involvement is valuable and can help make this project even more useful to the community. Thank you for being a part of this open-source effort!
