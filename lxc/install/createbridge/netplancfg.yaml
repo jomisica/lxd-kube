@@ -1,0 +1,13 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ${DEFAULT_IF}:
+      dhcp4: no
+      dhcp6: no
+  bridges:
+    lxdbridge:
+      dhcp4: yes
+      dhcp6: no
+      interfaces:
+      - ${DEFAULT_IF}
