@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root"
+    echo "Please run with sudo"
     echo "Example: sudo bash create-lxd-bridge.sh"
     exit
 fi
