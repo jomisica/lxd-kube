@@ -191,9 +191,9 @@ For more advanced configurations we must configure the 'lxc/preseed/preseed.yaml
 $ sudo bash install-lxd.sh
 ```
 
-#### Provision Kubernetes Clusters
-
 The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
+
+#### Provision Kubernetes Clusters
 
 To provision the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
 
@@ -202,8 +202,6 @@ $ bash lxd-kube provision
 ```
 
 #### Destroy LXD containers and Kubernetes clusters
-
-The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
 
 To destroy the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
 
