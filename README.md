@@ -163,7 +163,7 @@ $ cd lxd-projects-provisioning-kubernetes
 ```
 
 
-### Create bridge
+#### Create bridge
 
 We provide a script to configure the bridge. But it should only be used on Ubuntu >=18.04. It has not been tested on other versions. You should also only use this script to create the bridge, if your computer only has one network interface. To configure it on computers with more than one network interface, it is possible but you have to modify the template we provide at lxc/netplan/netplancfg.yaml. If you need help on how to do this, get in touch.
 
@@ -171,7 +171,7 @@ We provide a script to configure the bridge. But it should only be used on Ubunt
 $ sudo bash create-lxd-bridge.sh
 ```
 
-### Running the script
+#### Running the script
 
 The "cluster-config-data.csv" file defines the number of projects to be created and their properties. The data provided in this file creates three projects for LXD, with each project containing one master node and two worker nodes for Kubernetes.
 
@@ -185,6 +185,6 @@ We plan to provide additional documentation on how to configure and use this scr
 $ bash lxd-kube provision
 ```
 
-Problem/BUGS report:
+### Problem/BUGS report:
 
 If you encounter any issues while running the script, please report them to help us make improvements.
