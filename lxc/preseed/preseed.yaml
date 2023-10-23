@@ -1,0 +1,24 @@
+config:
+  core.https_address: '[::]:8443'
+networks: []
+storage_pools:
+- config: {}
+  description: "Default Storage poll DIR"
+  name: default
+  driver: dir
+profiles:
+- config: {}
+  description: ""
+  devices:
+    eth0:
+      name: eth0
+      nictype: bridged
+      parent: lxdbridge
+      type: nic
+    root:
+      path: /
+      pool: default
+      type: disk
+  name: default
+projects: []
+cluster: null
