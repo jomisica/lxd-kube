@@ -23,7 +23,7 @@ cat "lxc/preseed/preseed.yaml" | lxd init --preseed
 
 groups ${SUDO_USER} | grep lxd
 if [ $? -eq 0 ]; then
-    echo "[ON] The user '${SUDO_USER}'' is already a member of 'lxd'."
+    echo "[ON] The user '${SUDO_USER}' is already a member of 'lxd'."
 else
     adduser ${SUDO_USER} lxd
 fi
