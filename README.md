@@ -11,10 +11,11 @@ The project already distributes templates and a configuration file that referenc
 
 This README explains how to create Kubernetes clusters inside LXD containers.
 
-### Setting up a K8s Cluster using LXC/LXD 
 > **Note:** These instructions are for development purposes and are not recommended for production use.
 
-#### Installing LXC on Ubuntu
+> **Note:** It can be an initial configuration for production however many security and storage aspects have to be addressed in order to have minimal use in production.
+
+#### Installing LXD on Ubuntu
 
 You can see more information on how to install and configure LXD at [this link](https://documentation.ubuntu.com/lxd/en/latest/installing/).
 
