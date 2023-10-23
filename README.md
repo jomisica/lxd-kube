@@ -171,7 +171,7 @@ We provide a script to configure the bridge. But it should only be used on Ubunt
 $ sudo bash create-lxd-bridge.sh
 ```
 
-#### Rrovision Kubernetes Clusters
+#### Provision Kubernetes Clusters
 
 The "cluster-config-data.csv" file defines the number of projects to be created and their properties. The data provided in this file creates three projects for LXD, with each project containing one master node and two worker nodes for Kubernetes.
 
