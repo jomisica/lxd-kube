@@ -40,6 +40,14 @@ fi
 
 brctl addif lxdbridge "${DEFAULT_IF}"
 
+brctl show lxdbridge | grep "${DEFAULT_IF}"
+if [ $? -eq 0 ]; then
+    echo "[OK] A interface '${DEFAULT_IF}' foi adicionada à bridge 'lxdbridge'."
+else
+    echo "[ERROR] Não foi possivel a interface '${DEFAULT_IF}' à bridge 'lxdbridge'."
+    exit 255
+fi
+
 # netplan config file
 CONFIG_NETPLAN_FILE=$(grep -r "${DEFAULT_IF}:" /etc/netplan/ | awk '{sub(/:.*/, ""); print}')
 
