@@ -37,6 +37,8 @@ You can create a new key pair and place it in the same location with the same na
 
 ### List of projects
 
+The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
+
 The following list of projects is provided for your reference, but you should modify it to meet your specific requirements. We will attempt to explain each column as clearly as possible, helping you understand your role in creating clusters.
 
 | LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
@@ -184,16 +186,22 @@ $ sudo bash install-lxd.sh
 
 #### Provision Kubernetes Clusters
 
-The "cluster-config-data.csv" file defines the number of projects to be created and their properties. The data provided in this file creates three projects for LXD, with each project containing one master node and two worker nodes for Kubernetes.
+The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
 
-You can and should adjust these settings to align with your specific requirements.
-
-Inside the lxd/profiles directory, you will find a profile for each container used in your Kubernetes clusters. These profiles should be configured as needed. In the provided examples, a bridge named "lxdbridge" is used.
-
-We plan to provide additional documentation on how to configure and use this script in the future.
+To provision the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
 
 ```shell
 $ bash lxd-kube provision
+```
+
+#### Destroy LXD containers and Kubernetes clusters
+
+The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
+
+To destroy the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
+
+```shell
+$ bash lxd-kube destroyprojects
 ```
 
 ### Problem/BUGS report:
