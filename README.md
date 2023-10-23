@@ -17,8 +17,6 @@ $ sudo snap install lxd
 
 #### Configuring LXD
 
-
-
 Before proceeding, you must create a bridge in Linux and specify the bridge you want LXD to use. We have created a bridge named "lxdbridge" for the provided examples.
 
 If you need guidance on creating a bridge in Linux, you can refer to [this article](https://linuxhint.com/bridge-utils-ubuntu/) on bridge-utils in Ubuntu or any other resource of your choice.
@@ -162,6 +160,15 @@ Access the project directory
 
 ```shell
 $ cd lxd-projects-provisioning-kubernetes
+```
+
+
+### Create bridge
+
+We provide a script to configure the bridge. But it should only be used on Ubuntu >=18.04. It has not been tested on other versions. You should also only use this script to create the bridge, if your computer only has one network interface. To configure it on computers with more than one network interface, it is possible but you have to modify the template we provide at lxc/netplan/netplancfg.yaml. If you need help on how to do this, get in touch.
+
+```shell
+$ sudo bash create-lxd-bridge.sh
 ```
 
 ### Running the script
