@@ -173,6 +173,15 @@ Running the following command will create the 'lxdbridge' bridge and add the int
 $ sudo bash create-lxd-bridge.sh
 ```
 
+#### Install e configure LXD
+
+We provide a script to install and configure LXD on Ubuntu 22.04, the only version we have tested. However, you should only install with the script if you just want simple options. Storage is in 'dir' mode by default, which will consume the same file system as other applications. The bridge configures the 'lxdbridge' as desired and must already be created. It is not in Cluster mode.
+For more advanced configurations we must configure the 'lxc/preseed/preseed.yaml' template. If you need help on how to do this, get in touch.
+
+```shell
+$ sudo bash install-lxd.sh
+```
+
 #### Provision Kubernetes Clusters
 
 The "cluster-config-data.csv" file defines the number of projects to be created and their properties. The data provided in this file creates three projects for LXD, with each project containing one master node and two worker nodes for Kubernetes.
