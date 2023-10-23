@@ -212,10 +212,6 @@ To destroy the projects that are defined in the 'cluster-config-data.csv' config
 $ bash lxd-kube destroyprojects
 ```
 
-### Problem/BUGS report:
-
-If you encounter any issues while running the script, please report them to help us make improvements.
-
 ### Suggestion for Improvements
 
 If you identify opportunities for improvement in this project or encounter issues you'd like to report, your contribution is essential to make the project more robust and valuable. We actively encourage the user community to get involved and collaborate. Here are some ways to participate:
