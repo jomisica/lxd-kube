@@ -177,6 +177,8 @@ $ cd lxd-projects-provisioning-kubernetes
 
 We provide a script to configure the bridge. But it should only be used on Ubuntu >=18.04. It has not been tested on other versions. You should also only use this script to create the bridge, if your computer only has one network interface. To configure it on computers with more than one network interface, it is possible but you have to modify the template we provide at lxc/netplan/netplancfg.yaml. It will also be necessary to edit the template if you need to configure a static IP on the bridge. If you need help on how to do this, get in touch.
 
+> **Note:** When testing on a virtual machine (e.g. virtualbox), it is possible, however the network interface in the vitualizer settings must allow the interface to be in promiscuous mode.
+
 Running the following command will create the 'lxdbridge' bridge and add the interface on your system that has the default route to the 'lxdbridge' bridge. This bridge will be configured with a dynamic IP, you must create a reserve with the bride's MAC Address in your DHCP, so that it maintains the same IP.
 
 ```shell
