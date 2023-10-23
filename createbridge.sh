@@ -32,6 +32,11 @@ fi
 
 # get default interface
 export DEFAULT_IF=$(/sbin/ip route | awk '/^default/ { print $5 }')
+if [ "${DEFAULT_IF}" = "lxdbridge" ]; then
+    echo "[ERROR] A rota por defeito já é para a bridge 'lxdbridge'."
+    echo "[ABORT] A bridge parece estar configurada 'lxdbridge'."
+    exit 255
+fi
 
 brctl addif lxdbridge "${DEFAULT_IF}"
 
@@ -40,7 +45,7 @@ CONFIG_NETPLAN_FILE=$(grep -r "${DEFAULT_IF}:" /etc/netplan/ | awk '{sub(/:.*/, 
 
 cp "${CONFIG_NETPLAN_FILE}" /root
 
-$(envsubst <lxc/netplan/netplancfg.yaml > "${CONFIG_NETPLAN_FILE}")
+$(envsubst <lxc/netplan/netplancfg.yaml >"${CONFIG_NETPLAN_FILE}")
 
 netplan apply
 
