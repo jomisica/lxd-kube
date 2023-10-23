@@ -167,6 +167,8 @@ $ cd lxd-projects-provisioning-kubernetes
 
 We provide a script to configure the bridge. But it should only be used on Ubuntu >=18.04. It has not been tested on other versions. You should also only use this script to create the bridge, if your computer only has one network interface. To configure it on computers with more than one network interface, it is possible but you have to modify the template we provide at lxc/netplan/netplancfg.yaml. If you need help on how to do this, get in touch.
 
+Running the following command will create the 'lxd bridge' bridge and add the interface on your system that has the default route to the 'lxdbridge' bridge.
+
 ```shell
 $ sudo bash create-lxd-bridge.sh
 ```
