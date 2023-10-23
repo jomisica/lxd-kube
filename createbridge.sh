@@ -41,7 +41,9 @@ if [ $? -eq 0 ]; then
     echo "[OK] A bridge 'lxdbridge' já existe."
 fi
 
-$(envsubst <lxc/install/createbridge/netplancfg.yaml > "${CONFIG_NETPLAN_FILE}")
+cp "${CONFIG_NETPLAN_FILE}" /root
+
+$(envsubst <lxc/netplan/netplancfg.yaml > "${CONFIG_NETPLAN_FILE}")
 
 netplan apply
 
