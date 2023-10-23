@@ -2,6 +2,13 @@
 Written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
 
 ## Description:
+
+This project is a collection of templates and scripts that aim to quickly and efficiently provision Kubernetes clusters on top of LXC containers.
+
+By creating and/or configuring templates, it will be possible to optimize various aspects of both LXD and Kubernetes configurations.
+
+The project already distributes templates and a configuration file that references them as well as the scripts used to create kubernetes containers and clusters.
+
 This README explains how to create Kubernetes clusters inside LXD containers.
 
 ### Setting up a K8s Cluster using LXC/LXD 
