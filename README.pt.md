@@ -193,6 +193,14 @@ $ sudo bash install-lxd.sh
 
 O ficheiro 'cluster-config-data.csv' é o ficheiro utilizado pelo script para criar os containers e configurar os clusters Kubernetes desejados. Este mesmo ficheiro é utilizado quando desejamos eliminar projetos. É um ficheiro CSV que utiliza uma vírgula como separador. Todas as linhas devem terminar com uma vírgula. Cada linha deve conter nove colunas.
 
+### Verificar o Ficheiro de Configuração
+
+Este comando irá ler o ficheiro de configuração e filtar apenas as linhas que não aparetem ter erro, deve verificar se não foram excluidas linhas. Se foram é porque está algo mal escrito no ficheiro.
+
+```shell
+$ bash lxd-kube verifyconfig
+```
+
 ### Provisionar Clusters Kubernetes
 
 Para provisionar os projetos definidos no ficheiro de configuração 'cluster-config-data.csv', execute o seguinte comando:

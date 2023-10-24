@@ -9,7 +9,7 @@ fi
 LXD_DONE=false
 
 usage() {
-    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects]"
+    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig]"
     exit 1
 }
 get_projects() {
@@ -588,10 +588,22 @@ prepare_input_file() {
 
         DEPLOY_LIST+=("$(echo -e "${values0},${values1},${values2},${values3},${values4},${values5},${values6},${values7},${values8}")")
     done
+    if [ "$1" = "show" ]; then
+        show_valid_config
+    fi
 }
 
-verifyconfig() {
-    prepare_input_file
+show_valid_config() {
+
+    echo "These are the valid lines in the configuration file,"
+    echo "check that they are all as expected. Do not proceed with the"
+    echo "installation if any lines are missing, which means that something"
+    echo "in the file is missing."
+    echo
+
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        echo "${DEPLOY_LIST[$i]}"
+    done
 }
 
 case "$1" in
@@ -618,7 +630,7 @@ destroyprojects)
     ;;
 verifyconfig)
     echo -e "\nCheck the configuration file...\n"
-    prepare_input_file
+    prepare_input_file show
     ;;
 *)
     usage
