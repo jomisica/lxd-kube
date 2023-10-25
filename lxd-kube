@@ -272,6 +272,24 @@ delete_lxc_images() {
     done
 }
 
+delete_lxc_bridges() {
+    local IFS=","
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        read -a values <<<"${DEPLOY_LIST[$i]}"
+
+        if [[ "${values[4]}" == "master" ]]; then
+            echo "### Deleting the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
+            lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Bridge delected"
+            else
+                echo "#### [$?] Error Bridge delected"
+                exit $?
+            fi
+        fi
+    done
+}
+
 delete_lxc_profiles() {
     local IFS=","
     for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
