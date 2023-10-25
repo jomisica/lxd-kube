@@ -11,7 +11,7 @@ CONFIG_FILE=default.csv
 
 usage() {
     echo
-    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig] --config file.csv"
+    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig|stop|start|pause|restart] --config file.csv"
     echo
     exit 1
 }
@@ -63,6 +63,15 @@ get_containers() {
         local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         CONTAINERS+=("$prof_name")
     done < <(lxc --project "$1" list --format csv 2>/dev/null)
+}
+
+get_container_stat() {
+    local fields
+    local IFS=,
+    while read -a fields; do
+        local STAT=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
+        echo ${STAT}
+    done < <(lxc --project "$1" list "$2" --format csv 2>/dev/null)
 }
 
 get_images() {
@@ -141,6 +150,64 @@ is_in_array() {
     done
 
     return 1
+}
+
+lxc_stop_containers() {
+    local IFS=","
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        read -a values <<<"${DEPLOY_LIST[$i]}"
+        echo "### Stopping container '${values[2]}' in project '${values[0]}'."
+        if [ $(get_container_stat "${values[0]}" "${values[2]}") != "STOPPED" ]; then
+            lxc --project "${values[0]}" stop "${values[2]}"
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Container stopped"
+            else
+                echo "#### [$?] Error stopping the container"
+                exit $?
+            fi
+        else
+            echo "#### [OK] The container is already stopped"
+        fi
+    done
+}
+
+lxc_start_containers() {
+    local IFS=","
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        read -a values <<<"${DEPLOY_LIST[$i]}"
+        echo "### Starting the container '${values[2]}' in project '${values[0]}'."
+        local stat=$(get_container_stat "${values[0]}" "${values[2]}")
+        if [ ${stat} = "STOPPED" ] || [ ${stat} = "FROZEN" ]; then
+            lxc --project "${values[0]}" start "${values[2]}"
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Container started"
+            else
+                echo "#### [$?] Error starting container"
+                exit $?
+            fi
+        else
+            echo "#### [OK] The container is already started"
+        fi
+    done
+}
+
+lxc_pause_containers() {
+    local IFS=","
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        read -a values <<<"${DEPLOY_LIST[$i]}"
+        echo "### Pausing the container '${values[2]}' in project '${values[0]}'."
+        if [ $(get_container_stat "${values[0]}" "${values[2]}") = "RUNNING" ]; then
+            lxc --project "${values[0]}" pause "${values[2]}"
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Container paused"
+            else
+                echo "#### [$?] Error pausing the container"
+                exit $?
+            fi
+        else
+            echo "#### [OK] The container is not running"
+        fi
+    done
 }
 
 create_lxc_projects() {
@@ -762,9 +829,9 @@ parse_options() {
 case "$1" in
 provision)
     echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
-    if [ "$2" = "kubernetes" ]; then
-        LXD_DONE=true
-    fi
+    #if [ "$2" = "kubernetes" ]; then
+    #    LXD_DONE=true
+    #fi
     parse_options "$@"
     prepare_input_file
     provision
@@ -787,6 +854,32 @@ verifyconfig)
     echo -e "\nCheck the configuration file...\n"
     parse_options "$@"
     prepare_input_file show
+    ;;
+stop)
+    echo -e "\n## Stopping the list of containers...\n"
+    parse_options "$@"
+    prepare_input_file
+    lxc_stop_containers
+    ;;
+start)
+    echo -e "\n## Starting the list of containers...\n"
+    parse_options "$@"
+    prepare_input_file
+    lxc_start_containers
+    ;;
+pause)
+    echo -e "\n## Pause the list of containers...\n"
+    parse_options "$@"
+    prepare_input_file
+    lxc_pause_containers
+    ;;
+restart)
+    echo -e "\n## Restart the list of containers...\n"
+    parse_options "$@"
+    prepare_input_file
+    lxc_stop_containers
+    lxc_start_containers
+
     ;;
 *)
     usage

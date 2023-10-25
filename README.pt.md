@@ -259,6 +259,37 @@ Usando o ficheiro configuração diferente.
 $ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 ```
 
+### Parar containers
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube stop --config k8s-1.22.0.csv
+```
+
+### Iniciar containers
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube start --config k8s-1.22.0.csv
+```
+
+### Pausar containers
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube pause --config k8s-1.22.0.csv
+```
+
+### Reinicializar containers
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube restart --config k8s-1.22.0.csv
+```
+
+
+
+
 ## Sugestões para Melhorias
 
 Se identificar oportunidades de melhoria neste projeto ou encontrar problemas que deseja relatar, a sua contribuição é essencial para tornar o projeto mais robusto e valioso. Encorajamos ativamente a comunidade de utilizadores a envolver-se e colaborar. Eis algumas formas de participar:
