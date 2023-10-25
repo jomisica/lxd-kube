@@ -262,7 +262,7 @@ $ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 
 As ações são sempre realizadas em massa; por exemplo, podemos interromper todos os containers do LXD listados no ficheiro de configuração. Sempre devemos separar os projetos em diferentes ficheiros de configuração. No entanto, se um arquivo contiver mais de um projeto, as ações serão aplicadas a todos os containers listados no ficheiro.
 
-These actions become particularly important when working on multiple projects simultaneously. You might have several clusters configured, but you may only wish to work on one at a time. Pausing or stopping projects that are not in use at a given moment helps conserve resources.
+Estas ações são importantes se trabalharmos com mais de um projecto ao mesmo tempo. Podemos ter configurados varios clusters, no entanto podemos querer trabalhar em apenas um de cada vez. Pausando ou parando os projectos que não estamos a usar no momento é uma poupança de recursos.
 
 ### Parar containers
 
