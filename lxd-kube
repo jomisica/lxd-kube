@@ -158,8 +158,10 @@ create_lxc_bridges() {
 
         lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
 
+        export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
+        export LXD_PROJECT="${values[0]}"
 
-        lxc network edit "${values[0]}"-lxdbr < <(cat lxc/lxdbridge/"${values[0]}"/bridge.yaml)
+        lxc network edit "${values[0]}"-lxdbr < <($(envsubst < "lxc/lxdbridge/"${values[0]}"/bridge.yaml"))
 
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Bridge edited"
@@ -411,7 +413,7 @@ provision_kubernetes_cluster() {
             echo "#### Generating a token in Kubernetes"
             export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${values[0]}" exec "${values[2]}" -- bash) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
 
-            export K8S_API_ENDPOINT=${values[5]}
+            export K8S_API_ENDPOINT=${values[2]}"."${values[5]}
             export K8S_CLUSTER_NAME=${values[6]}
             export K8S_POD_SUBNET=${values[7]}
             export K8S_VERSION=${values[8]}

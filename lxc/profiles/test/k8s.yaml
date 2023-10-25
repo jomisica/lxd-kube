@@ -11,7 +11,7 @@ devices:
   eth0:
     name: eth0
     nictype: bridged
-    parent: lxdbr1
+    parent: test-lxdbr
     type: nic
   root:
     path: /
