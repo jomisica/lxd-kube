@@ -209,6 +209,8 @@ create_lxc_instances() {
         CONTAINERS=()
         get_containers "${values[0]}"
 
+        echo ${CONTAINERS[@]}
+
         echo "### Creating the '${values[2]}' container in the '${values[0]}' LXC project."
         if ! is_in_array "${values[2]}" "${CONTAINERS[@]}"; then
             echo "#### With the image '${values[3]}'."
