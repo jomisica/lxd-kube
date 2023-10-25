@@ -371,8 +371,13 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Resolving the master plane domain: "${values[5]}
-            echo "nslookup '${values[5]}' | grep 'Address:' | grep '$(get_instance_ip "${values[0]}" "${values[2]}")'" | lxc --project "${values[0]}" exec "${values[2]}" bash >kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
+            export K8S_API_ENDPOINT=${values[2]}.${values[5]}
+            export K8S_CLUSTER_NAME=${values[6]}
+            export K8S_POD_SUBNET=${values[7]}
+            export K8S_VERSION=${values[8]}
+
+            echo "#### Resolving the master plane domain:" ${K8S_API_ENDPOINT}
+            echo "nslookup '${K8S_API_ENDPOINT}' | grep 'Address:' | grep '$(get_instance_ip "${values[0]}" "${values[2]}")'" | lxc --project "${values[0]}" exec "${values[2]}" bash >kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### It is possible to resolve the domain to the machine's IP:" $(get_instance_ip "${values[0]}" "${values[2]}")
             else
@@ -414,10 +419,7 @@ provision_kubernetes_cluster() {
             echo "#### Generating a token in Kubernetes"
             export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${values[0]}" exec "${values[2]}" -- bash) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
 
-            export K8S_API_ENDPOINT=${values[2]}"."${values[5]}
-            export K8S_CLUSTER_NAME=${values[6]}
-            export K8S_POD_SUBNET=${values[7]}
-            export K8S_VERSION=${values[8]}
+
 
             kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-init-config.yaml")
             echo "#### Processing the ${kadminittemplate} template"
