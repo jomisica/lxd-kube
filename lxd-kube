@@ -166,6 +166,7 @@ create_lxc_bridges() {
             mkdir -p "kubernetes/generated-configs/"${values[0]}
             $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >kubernetes/generated-configs/"${values[0]}"/bridge.yaml)
             lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat "kubernetes/generated-configs/"${values[0]}"/bridge.yaml")
+
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Bridge edited"
             else
@@ -199,9 +200,13 @@ create_lxc_profiles() {
         fi
 
         echo "### Applying the settings in the '${values[1]}' profile in the '${values[0]}' LXC project."
+        export LXD_PROJECT="${values[0]}"
+
+        mkdir -p lxc/generated-configs/profiles/"${values[0]}"
+        $(envsubst <$(get_lxc_profile_path lxc/profiles/"${values[0]}"/"${values[1]}".yaml) >lxc/generated-configs/profiles/"${values[0]}"/"${values[1]}".yaml)
 
         #echo $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml")
-        lxc --project "${values[0]}" profile edit "${values[1]}" < <(cat $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml"))
+        lxc --project "${values[0]}" profile edit "${values[1]}" < <(cat lxc/generated-configs/profiles/"${values[0]}"/"${values[1]}".yaml)
         if [ $? -eq 0 ]; then
             echo "#### [OK] Settings applied"
         else

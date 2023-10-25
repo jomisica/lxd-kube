@@ -12,7 +12,7 @@ devices:
     name: eth0
     hwaddr: 00:16:3e:00:00:01
     nictype: bridged
-    parent: test-lxdbr
+    parent: ${LXD_PROJECT}-lxdbr
     type: nic
   root:
     path: /
