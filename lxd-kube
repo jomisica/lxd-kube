@@ -159,8 +159,12 @@ create_lxc_bridges() {
         lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
         lxc network edit "${values[0]}"-lxdbr < <(cat lxc/lxdbridge/"${values[0]}"/bridge.yaml)
 
-        get_profiles "${values[0]}"
-
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Bridge edited"
+            else
+                echo "#### [$?] Error Bridge edite"
+                exit $?
+            fi
 
     done
 }
