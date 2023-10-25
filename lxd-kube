@@ -82,6 +82,15 @@ get_bridge() {
     fi
 }
 
+is_cluster() {
+    local tmp=$(lxc info | grep "server_clustered: true" 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        return $?
+    fi
+}
+
 is_up() {
     local fields
     local IFS=,
@@ -159,39 +168,41 @@ create_lxc_projects() {
 }
 
 create_lxc_bridges() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    if ! is_cluster; then
+        local IFS=","
+        for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+            read -a values <<<"${DEPLOY_LIST[$i]}"
 
-        if [[ "${values[4]}" == "master" ]]; then
-            echo "### Creating bridge "${values[0]}"-lxdbr in the '${values[0]}' project."
-            if ! get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
-                lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
-                if [ $? -eq 0 ]; then
-                    echo "#### [OK] Bridge created"
+            if [[ "${values[4]}" == "master" ]]; then
+                echo "### Creating bridge "${values[0]}"-lxdbr in the '${values[0]}' project."
+                if ! get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
+                    lxc --project "${values[0]}" network create "${values[0]}"-lxdbr --target terra --target lxdn1
+                    if [ $? -eq 0 ]; then
+                        echo "#### [OK] Bridge created"
+                    else
+                        echo "#### [$?] Error creating bridge"
+                        exit $?
+                    fi
                 else
-                    echo "#### [$?] Error creating bridge"
+                    echo "#### [OK] Bridge exists"
+                fi
+
+                export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
+                export LXD_PROJECT="${values[0]}"
+
+                mkdir -p lxc/generated-configs/bridge/"${values[0]}"
+                $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
+                lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
+
+                if [ $? -eq 0 ]; then
+                    echo "#### [OK] Bridge edited"
+                else
+                    echo "#### [$?] Error Bridge edite"
                     exit $?
                 fi
-            else
-                echo "#### [OK] Bridge exists"
             fi
-
-            export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
-            export LXD_PROJECT="${values[0]}"
-
-            mkdir -p lxc/generated-configs/bridge/"${values[0]}"
-            $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
-            lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
-
-            if [ $? -eq 0 ]; then
-                echo "#### [OK] Bridge edited"
-            else
-                echo "#### [$?] Error Bridge edite"
-                exit $?
-            fi
-        fi
-    done
+        done
+    fi
 }
 
 create_lxc_profiles() {
@@ -290,25 +301,27 @@ delete_lxc_images() {
 }
 
 delete_lxc_bridges() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    if ! is_cluster; then
+        local IFS=","
+        for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+            read -a values <<<"${DEPLOY_LIST[$i]}"
 
-        if [[ "${values[4]}" == "master" ]]; then
-            echo "### Deleting bridge "${values[0]}"-lxdbr in project '${values[0]}'."
-            if get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
-                lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
-                if [ $? -eq 0 ]; then
-                    echo "#### [OK] Bridge deleted"
+            if [[ "${values[4]}" == "master" ]]; then
+                echo "### Deleting bridge "${values[0]}"-lxdbr in project '${values[0]}'."
+                if get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
+                    lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
+                    if [ $? -eq 0 ]; then
+                        echo "#### [OK] Bridge deleted"
+                    else
+                        echo "#### [$?] Error deleting the bridge"
+                        exit $?
+                    fi
                 else
-                    echo "#### [$?] Error deleting the bridge"
-                    exit $?
+                    echo "#### [OK] Bridge do not exists"
                 fi
-            else
-                echo "#### [OK] Bridge do not exists"
             fi
-        fi
-    done
+        done
+    fi
 }
 
 delete_lxc_profiles() {
