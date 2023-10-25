@@ -64,9 +64,7 @@ The files describing Kubernetes containers and nodes are stored in the project's
 
 The fundamental idea behind this project is to enable the configuration of multiple projects and facilitate the creation or removal of the projects or specific project lists as needed.
 
-To achieve this, the script allows you to specify, via a parameter, which file to use. These files should be located in the 'config' folder. Here is where we create files that contain lists of the LXD containers and Kubernetes nodes we require. You can generate as many files as necessary for your projects. [Ver como usar](#Verify Configuration File)
-
-See how to use
+To achieve this, the script allows you to specify, via a parameter, which file to use. These files should be located in the 'config' folder. Here is where we create files that contain lists of the LXD containers and Kubernetes nodes we require. You can generate as many files as necessary for your projects. [### Verify Configuration File](#verify-configuration-file)
 
 These files use a CSV format and employ a comma as a separator. Every line should conclude with a comma, and each row should contain nine columns.
 

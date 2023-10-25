@@ -64,7 +64,7 @@ Os ficheiros que descrevem os containers e os nós do Kubernetes são armazenado
 
 No entanto, a ideia por trás deste projeto é possibilitar a configuração de vários projetos e facilitar a criação ou destruição dos projetos ou listas de projetos específicos, conforme necessário.
 
-Para isso, o script permite especificar, através de um parâmetro, qual ficheiro utilizar. Esses ficheiros devem estar localizados na pasta 'config.' É neste local que criamos os ficheiros que contêm as listas de containers LXD e nós do Kubernetes que precisamos. Podemos criar quantos ficheiros forem necessários para os nossos projetos. [Ver como usar](#Verificar o Ficheiro de Configuração)
+Para isso, o script permite especificar, através de um parâmetro, qual ficheiro utilizar. Esses ficheiros devem estar localizados na pasta 'config.' É neste local que criamos os ficheiros que contêm as listas de containers LXD e nós do Kubernetes que precisamos. Podemos criar quantos ficheiros forem necessários para os nossos projetos. [### Verificar o Ficheiro de Configuração](#verificar-o-ficheiro-de-configuração)
 
 Esses ficheiros utilizam o formato CSV e empregam a vírgula como separador. Todas as linhas devem terminar com uma vírgula, e cada linha deve conter nove colunas.
 
