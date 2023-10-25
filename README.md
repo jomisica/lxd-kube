@@ -49,15 +49,15 @@ The 'cluster-config-data.csv' file is the file used by the script to create the 
 
 The following list of projects is provided for your reference, but you should modify it to meet your specific requirements. We will attempt to explain each column as clearly as possible, helping you understand your role in creating clusters.
 
-| LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
+| LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT_DOMAIN            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
 | --------------- | --------------- | ---------------------------- | ------------------- | -------- | ---------------------------- | ---------------- | -------------- | ----------- |
-| project         | k8s-kmaster     | project-kmaster              | ubuntu:22.04        | master   | project-kmaster.ncdc.pt     | project          | 10.10.0.0/16  | 1.28.2      |
+| project         | k8s-kmaster     | project-kmaster              | ubuntu:22.04        | master   | test.pt     | project          | 10.10.0.0/16  | 1.28.2      |
 | project         | k8s-kworker1    | project-kworker1             | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project         | k8s-kworker2    | project-kworker2             | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
-| project-dev     | k8s-dev-kmaster | project-dev-kmaster          | ubuntu:22.04        | master   | project-dev-kmaster.ncdc.pt | project-dev      | 10.11.0.0/16  | 1.28.2      |
+| project-dev     | k8s-dev-kmaster | project-dev-kmaster          | ubuntu:22.04        | master   | test.pt | project-dev      | 10.11.0.0/16  | 1.28.2      |
 | project-dev     | k8s-dev-kworker1| project-dev-kworker1         | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project-dev     | k8s-dev-kworker2| project-dev-kworker2         | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
-| project-test    | k8s-test-kmaster| project-test-kmaster         | ubuntu:22.04        | master   | project-test-kmaster.ncdc.pt| project-test     | 10.12.0.0/16  | 1.28.2      |
+| project-test    | k8s-test-kmaster| project-test-kmaster         | ubuntu:22.04        | master   | test.pt| project-test     | 10.12.0.0/16  | 1.28.2      |
 | project-test    | k8s-test-kworker1| project-test-kworker1       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project-test    | k8s-test-kworker2| project-test-kworker2       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 
@@ -95,10 +95,10 @@ This column is used by the script to determine whether to configure Kubernetes a
 
 This column can have two values: "master" or "worker."
 
-### The K8S_API_ENDPOINT column
+### The K8S_API_ENDPOINT_DOMAIN column
 
-This column defines the domain to use with the master plane. The domain should follow the format hostname.domain.xyz, where the hostname corresponds to the name specified in
-the LXD_CONTAINER_NAME/HOSTNAME column.
+This column defines the domain to use with the master plane. The domain must follow the format dominio.xyz.
+This will be transformed to hostname.domain.xyz where the hostname matches the name specified in the LXD_CONTAINER_NAME/HOSTNAME column.
 
 This domain is used to access the Kubernetes API via a domain name rather than an IP address. The script will generate kubectl configurations for each cluster using the domain provided in this column.
 
