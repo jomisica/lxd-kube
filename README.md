@@ -264,6 +264,8 @@ $ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 
 The actions are always carried out in bulk. For example, we can stop all LXD containers listed in the configuration file. It is essential to separate projects into different configuration files. However, if a file contains more than one project, the actions are consistently applied to all containers listed in the file.
 
+Estas ações são importantes se trabalharmos com mais de um projecto ao mesmo tempo. Podemos ter configurados varios clusters, no entanto podemos querer trabalhar em apenas um de cada vez. Pausando ou parando os projectos que não estamos a usar no momento é uma poupança de recursos.
+
 ### Stop containers
 
 Using different configuration file.
