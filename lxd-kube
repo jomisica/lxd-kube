@@ -583,7 +583,7 @@ provision() {
     if [ "$LXD_DONE" = false ]; then
         echo -e "## Provisioning LXC containers\n"
 
-        #create_lxc_projects
+        create_lxc_projects
 
         echo
 
