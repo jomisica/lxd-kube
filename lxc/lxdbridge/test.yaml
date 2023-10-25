@@ -1,0 +1,13 @@
+config:
+  dns.domain: lxdbr1.pt
+  ipv4.address: 192.168.3.1/24
+  ipv4.nat: "true"
+  ipv6.dhcp.stateful: "false"
+  ipv6.nat: "false"
+description: ""
+name: lxdbr1
+type: bridge
+managed: true
+status: Created
+locations:
+- none
