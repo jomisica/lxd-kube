@@ -154,9 +154,11 @@ create_lxc_bridges() {
     local IFS=","
     for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
         read -a values <<<"${DEPLOY_LIST[$i]}"
-        echo "########### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
+        echo "### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
 
         lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
+
+
         lxc network edit "${values[0]}"-lxdbr < <(cat lxc/lxdbridge/"${values[0]}"/bridge.yaml)
 
             if [ $? -eq 0 ]; then
@@ -193,7 +195,7 @@ create_lxc_profiles() {
 
         echo "### Applying the settings in the '${values[1]}' profile in the '${values[0]}' LXC project."
 
-        echo $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml")
+        #echo $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml")
         lxc --project "${values[0]}" profile edit "${values[1]}" < <(cat $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml"))
         if [ $? -eq 0 ]; then
             echo "#### [OK] Settings applied"
