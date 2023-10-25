@@ -335,11 +335,11 @@ destroyprojects() {
 
     destroyinstances
     echo
-    delete_lxc_bridges
-    echo
     delete_lxc_profiles
     echo
     delete_lxc_images
+    echo
+    delete_lxc_bridges
     echo
 
     local IFS=","
