@@ -4,7 +4,7 @@ config:
   ipv4.nat: "true"
   ipv6.dhcp.stateful: "false"
   ipv6.nat: "false"
-description: ""
+description: "Test bridge NAT for k project"
 name: lxdbr1
 type: bridge
 managed: true

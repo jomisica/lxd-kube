@@ -150,6 +150,21 @@ create_lxc_projects() {
     done
 }
 
+create_lxc_bridges() {
+    local IFS=","
+    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+        read -a values <<<"${DEPLOY_LIST[$i]}"
+        echo "########### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
+
+        lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
+        lxc network edit "${values[0]}"-lxdbr < <(cat lxc/lxdbridge/"${values[0]}"/bridge.yaml)
+
+        get_profiles "${values[0]}"
+
+
+    done
+}
+
 create_lxc_profiles() {
     local IFS=","
     for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
@@ -558,6 +573,10 @@ provision() {
         echo -e "## Provisioning LXC containers\n"
 
         create_lxc_projects
+
+        echo
+
+        create_lxc_bridges
 
         echo
 
