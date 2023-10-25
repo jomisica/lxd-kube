@@ -1,3 +1,3 @@
 LXD_PROJECT,LXD_PROFILE,LXD_CONTAINER_NAME/HOSTNAME,LXC_CONTAINER_IMAGE,K8S_TYPE,K8S_API_ENDPOINT,K8S_CLUSTER_NAME,K8S_POD_SUBNET,K8S_VERSION,
 
-project,k8s,project-kmaster, ubuntu:22.04,master,project-kmaster.ncdc.pt,project,10.10.0.0/16,1.28.2,
+test,k8s-kmaster,test-kmaster, ubuntu:22.04,master,lxdbr1.pt,test,10.10.0.0/16,1.22.0,
