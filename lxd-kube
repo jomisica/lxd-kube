@@ -73,6 +73,14 @@ get_images() {
         IMAGES+=("$FINGERPRINT")
     done < <(lxc image list --project "$1" --format csv 2>/dev/null)
 }
+get_bridge() {
+    lxc network list --project "$1" --format csv | grep "$2" 2>/dev/null
+    if [ $? -eq 0 ]; then
+       return 0
+    else
+        return $?
+    fi
+}
 
 is_up() {
     local fields
@@ -156,9 +164,18 @@ create_lxc_bridges() {
         read -a values <<<"${DEPLOY_LIST[$i]}"
 
         if [[ "${values[4]}" == "master" ]]; then
-            echo "### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
-
-            lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
+            echo "### Creating bridge "${values[0]}"-lxdbr in the '${values[0]}' project."
+            if ! get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
+                lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
+                if [ $? -eq 0 ]; then
+                    echo "#### [OK] Bridge created"
+                else
+                    echo "#### [$?] Error creating bridge"
+                    exit $?
+                fi
+            else
+                echo "#### [OK] Bridge exists"
+            fi
 
             export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
             export LXD_PROJECT="${values[0]}"
@@ -278,12 +295,12 @@ delete_lxc_bridges() {
         read -a values <<<"${DEPLOY_LIST[$i]}"
 
         if [[ "${values[4]}" == "master" ]]; then
-            echo "### Deleting the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
+            echo "### Deleting bridge "${values[0]}"-lxdbr in project '${values[0]}'."
             lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
             if [ $? -eq 0 ]; then
-                echo "#### [OK] Bridge delected"
+                echo "#### [OK] Bridge deleted"
             else
-                echo "#### [$?] Error Bridge delected"
+                echo "#### [$?] Error deleting the bridge"
                 exit $?
             fi
         fi
