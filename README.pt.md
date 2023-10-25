@@ -15,6 +15,21 @@ Este README explica como criar clusters Kubernetes dentro de containers LXD.
 
 > **Note:** Nota: Pode ser uma configuração inicial para produção; no entanto, muitos aspetos de segurança e armazenamento têm de ser tratados para serem usados em produção com segurança.
 
+## Para que serve este projeto
+
+Este projeto é utilizado para configurar um cluster Kubernetes em containers LXC. No entanto, existem pelo menos duas maneiras de utilizá-lo: a nível profissional e não profissional. Dentro desses dois principais grupos, existem muitos subgrupos.
+
+No contexto profissional, os computadores em produção têm uma rede estável, IPs estáticos e não mudam de local regularmente, entre outros requisitos. Eles dependem de outros subsistemas, como armazenamento, infraestrutura de rede, etc.
+
+A nível profissional, são utilizadas bridges de sistema para permitir a comunicação entre as máquinas do cluster e outros subsistemas. Naturalmente, é possível empregar VLANs, túneis e outras medidas de segurança para separar a comunicação entre grupos de projetos, etc.
+
+Já no caso dos desenvolvedores, além dos clusters utilizados por profissionais em suas atividades diárias, eles necessitam de um ambiente com configurações específicas que podem ser implantadas e desmontadas rapidamente para fins de testes. Esses clusters geralmente não são estáveis em termos de infraestrutura, pois costumam ser executados em laptops que são levados para diferentes locais, como escritórios de clientes, residências, cafés, etc.
+
+Este script permite a criação de ambos os tipos de cenários: um para uso estável, com base em uma infraestrutura de rede confiável, e outro para desenvolvedores que precisam de flexibilidade durante o processo de desenvolvimento. O cluster Kubernetes permanece estável mesmo se o computador de desenvolvimento for reiniciado, pois o Kubernetes requer que os IPs permaneçam os mesmos desde a instalação.
+
+Nesses casos, o LXD não funciona como um cluster, mas utiliza uma bridge com NAT e aproveita o laptop do desenvolvedor como gateway para a Internet. Os endereços atribuídos aos contêineres no cluster seguem um padrão, com a única variação sendo o IP ou a rede à qual o computador está fisicamente conectado. A principal preocupação é escolher uma rede que não esteja em uso nos locais frequentados, para garantir que funcione perfeitamente em todos os lugares.
+
+
 ## Instalação do LXD no Ubuntu
 
 Pode encontrar mais informações sobre como instalar e configurar o LXD neste link.

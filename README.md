@@ -15,6 +15,21 @@ This README explains how to create Kubernetes clusters inside LXD containers.
 
 > **Note:** It can be an initial configuration for production however many security and storage aspects have to be addressed in order to have minimal use in production.
 
+## What is this project for?
+
+This project is used to configure a Kubernetes cluster on top of LXC containers. However, there are at least two ways in which it is used: at a professional and non-professional level. Within these two main groups, there are many subgroups.
+
+At a professional level, computers in production have a stable network, static IP addresses, do not change physical locations regularly, and more. They are dependent on other subsystems, such as storage and network infrastructure.
+
+In a professional setting, system bridges are utilized to enable communication between the machines within the cluster and other subsystems. VLANs, tunnels, and other security measures may also be employed to facilitate separate communication for different project groups.
+
+On the other hand, developers require, in addition to a stable cluster, an environment for their day-to-day work. They need a cluster with a specific configuration that can be deployed quickly and dismantled just as fast for testing purposes. These clusters are typically not stable at the infrastructure level since they often run on laptops that can be used in various locations, such as at a client's site, office, home, or café.
+
+This script enables the creation of both types of situations: one for stable use based on a reliable network infrastructure, and another for developers who require flexibility during the development process. The Kubernetes cluster remains stable even if the development computer is restarted. Kubernetes, in essence, relies on consistent IP addresses from its installation.
+
+In these cases, LXD does not function as a cluster but uses a bridge with NAT and leverages the developer's laptop as a gateway to the internet. The addresses assigned to the containers within the cluster are standardized, with the only variation being the IP address or network to which the computer is physically connected. The main concern is selecting a network that is not already in use in the locations frequented, to ensure it works seamlessly everywhere.
+
+
 ## Installing LXD on Ubuntu
 
 You can see more information on how to install and configure LXD at [this link](https://documentation.ubuntu.com/lxd/en/latest/installing/).
