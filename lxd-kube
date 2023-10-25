@@ -154,23 +154,25 @@ create_lxc_bridges() {
     local IFS=","
     for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
         read -a values <<<"${DEPLOY_LIST[$i]}"
-        echo "### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
 
-        lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
+        if [[ "${values[4]}" == "master" ]]; then
+            echo "### Creating the bridge "${values[0]}"-lxdbr in the '${values[0]}' LXC project."
 
-        export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
-        export LXD_PROJECT="${values[0]}"
+            lxc --project "${values[0]}" network create "${values[0]}"-lxdbr
 
-        mkdir -p "kubernetes/generated-configs/"${values[0]}
-        $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >kubernetes/generated-configs/"${values[0]}"/bridge.yaml)
-        lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat "kubernetes/generated-configs/"${values[0]}"/bridge.yaml")
-        if [ $? -eq 0 ]; then
-            echo "#### [OK] Bridge edited"
-        else
-            echo "#### [$?] Error Bridge edite"
-            exit $?
+            export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
+            export LXD_PROJECT="${values[0]}"
+
+            mkdir -p "kubernetes/generated-configs/"${values[0]}
+            $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >kubernetes/generated-configs/"${values[0]}"/bridge.yaml)
+            lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat "kubernetes/generated-configs/"${values[0]}"/bridge.yaml")
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Bridge edited"
+            else
+                echo "#### [$?] Error Bridge edite"
+                exit $?
+            fi
         fi
-
     done
 }
 
@@ -418,8 +420,6 @@ provision_kubernetes_cluster() {
 
             echo "#### Generating a token in Kubernetes"
             export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${values[0]}" exec "${values[2]}" -- bash) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
-
-
 
             kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-init-config.yaml")
             echo "#### Processing the ${kadminittemplate} template"
