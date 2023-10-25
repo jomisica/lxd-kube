@@ -161,14 +161,15 @@ create_lxc_bridges() {
         export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
         export LXD_PROJECT="${values[0]}"
 
-        lxc network edit "${values[0]}"-lxdbr < <($(envsubst < "lxc/lxdbridge/"${values[0]}"/bridge.yaml"))
-
-            if [ $? -eq 0 ]; then
-                echo "#### [OK] Bridge edited"
-            else
-                echo "#### [$?] Error Bridge edite"
-                exit $?
-            fi
+        mkdir -p "kubernetes/generated-configs/"${values[0]}
+        $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >kubernetes/generated-configs/"${values[0]}"/bridge.yaml)
+        lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat "kubernetes/generated-configs/"${values[0]}"/bridge.yaml")
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Bridge edited"
+        else
+            echo "#### [$?] Error Bridge edite"
+            exit $?
+        fi
 
     done
 }
@@ -582,7 +583,7 @@ provision() {
     if [ "$LXD_DONE" = false ]; then
         echo -e "## Provisioning LXC containers\n"
 
-        create_lxc_projects
+        #create_lxc_projects
 
         echo
 
