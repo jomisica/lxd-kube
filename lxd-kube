@@ -703,11 +703,13 @@ provision)
     ;;
 destroyinstances)
     echo -e "\nDestroying all LXD instances...\n"
+    parse_options "$@"
     prepare_input_file
     destroyinstances
     ;;
 destroyprojects)
     echo -e "\nDestroying all LXD projects...\n"
+    parse_options "$@"
     prepare_input_file
     destroyprojects
     ;;
