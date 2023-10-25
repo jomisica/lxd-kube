@@ -213,7 +213,9 @@ Para configurações mais avançadas, é necessário configurar o template 'lxc/
 $ sudo bash install-lxd.sh
 ```
 
-O ficheiro 'cluster-config-data.csv' é o ficheiro utilizado pelo script para criar os containers e configurar os clusters Kubernetes desejados. Este mesmo ficheiro é utilizado quando desejamos eliminar projetos. É um ficheiro CSV que utiliza uma vírgula como separador. Todas as linhas devem terminar com uma vírgula. Cada linha deve conter nove colunas.
+## Como usar o script
+
+O ficheiro 'config/default.csv' é o ficheiro utilizado pelo script para criar os containers e configurar os clusters Kubernetes desejados. Este mesmo ficheiro é utilizado quando desejamos eliminar projetos. É um ficheiro CSV que utiliza uma vírgula como separador. Todas as linhas devem terminar com uma vírgula. Cada linha deve conter nove colunas.
 
 ### Verificar o Ficheiro de Configuração
 
