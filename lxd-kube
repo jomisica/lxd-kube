@@ -76,7 +76,7 @@ get_images() {
 get_bridge() {
     lxc network list --project "$1" --format csv | grep "$2" 2>/dev/null
     if [ $? -eq 0 ]; then
-       return 0
+        return 0
     else
         return $?
     fi
@@ -296,12 +296,16 @@ delete_lxc_bridges() {
 
         if [[ "${values[4]}" == "master" ]]; then
             echo "### Deleting bridge "${values[0]}"-lxdbr in project '${values[0]}'."
-            lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
-            if [ $? -eq 0 ]; then
-                echo "#### [OK] Bridge deleted"
+            if get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
+                lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
+                if [ $? -eq 0 ]; then
+                    echo "#### [OK] Bridge deleted"
+                else
+                    echo "#### [$?] Error deleting the bridge"
+                    exit $?
+                fi
             else
-                echo "#### [$?] Error deleting the bridge"
-                exit $?
+                echo "#### [OK] Bridge do not exists"
             fi
         fi
     done
