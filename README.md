@@ -200,24 +200,42 @@ The 'cluster-config-data.csv' file is the file used by the script to create the 
 
 This command will read the configuration file and filter only the lines that do not appear to have an error, you must check that no lines were excluded. If they were, it's because something was wrongly written in the file.
 
+Check the default configuration file.
 ```shell
 $ bash lxd-kube verifyconfig
+```
+
+Check a different configuration file.
+```shell
+$ bash lxd-kube verifyconfig --config k8s-1.22.0.csv
 ```
 
 ### Provision Kubernetes Clusters
 
 To provision the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
 
+Using the default configuration file.
 ```shell
 $ bash lxd-kube provision
+```
+
+Using different configuration file.
+```shell
+$ bash lxd-kube provision  --config k8s-1.22.0.csv
 ```
 
 ### Destroy LXD containers and Kubernetes clusters
 
 To destroy the projects that are defined in the 'cluster-config-data.csv' configuration file, we run the following command:
 
+Using the default configuration file.
 ```shell
 $ bash lxd-kube destroyprojects
+```
+
+Using different configuration file.
+```shell
+$ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 ```
 
 ## Suggestion for Improvements

@@ -197,24 +197,42 @@ O ficheiro 'cluster-config-data.csv' é o ficheiro utilizado pelo script para cr
 
 Este comando irá ler o ficheiro de configuração e filtar apenas as linhas que não aparetem ter erro, deve verificar se não foram excluidas linhas. Se foram é porque está algo mal escrito no ficheiro.
 
+Verificar o ficheiro configuração por defeito.
 ```shell
 $ bash lxd-kube verifyconfig
+```
+
+Verificar um ficheiro configuração diferente.
+```shell
+$ bash lxd-kube verifyconfig --config k8s-1.22.0.csv
 ```
 
 ### Provisionar Clusters Kubernetes
 
 Para provisionar os projetos definidos no ficheiro de configuração 'cluster-config-data.csv', execute o seguinte comando:
 
+Usando o ficheiro configuração por defeito.
 ```shell
 $ bash lxd-kube provision
+```
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube provision --config k8s-1.22.0.csv
 ```
 
 ### Destruir containers LXD e clusters Kubernetes
 
 Para destruir os projetos definidos no ficheiro de configuração 'cluster-config-data.csv', execute o seguinte comando:
 
+Usando o ficheiro configuração por defeito.
 ```shell
 $ bash lxd-kube destroyprojects
+```
+
+Usando o ficheiro configuração diferente.
+```shell
+$ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 ```
 
 ## Sugestões para Melhorias
