@@ -58,11 +58,19 @@ Inside the lxd/SSH-KEY directory, you will find an example PRIVATE and PUBLIC KE
 
 You can create a new key pair and place it in the same location with the same name.
 
-## List of projects
+## Configuration Files
 
-The 'cluster-config-data.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
+The files describing Kubernetes containers and nodes are stored in the project's 'config' directory. Within this directory, there is a file named 'default.csv.' This file is used by the script as a list of LXC containers and Kubernetes nodes that can be created or destroyed.
 
-The following list of projects is provided for your reference, but you should modify it to meet your specific requirements. We will attempt to explain each column as clearly as possible, helping you understand your role in creating clusters.
+The fundamental idea behind this project is to enable the configuration of multiple projects and facilitate the creation or removal of the projects or specific project lists as needed.
+
+To achieve this, the script allows you to specify, via a parameter, which file to use. These files should be located in the 'config' folder. Here is where we create files that contain lists of the LXD containers and Kubernetes nodes we require. You can generate as many files as necessary for your projects. [Ver como usar](#Verify Configuration File)
+
+See how to use
+
+These files use a CSV format and employ a comma as a separator. Every line should conclude with a comma, and each row should contain nine columns.
+
+Below is an example of a file containing nine LXD containers, organized into three Kubernetes clusters, with three containers within each Kubernetes cluster.
 
 | LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT_DOMAIN            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
 | --------------- | --------------- | ---------------------------- | ------------------- | -------- | ---------------------------- | ---------------- | -------------- | ----------- |

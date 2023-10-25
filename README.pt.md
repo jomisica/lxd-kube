@@ -58,11 +58,17 @@ Dentro do diretório lxd/SSH-KEY, encontrará um EXEMPLO de CHAVE PRIVADA e PÚB
 
 Pode criar um novo par de chaves e colocá-lo no mesmo local com o mesmo nome.
 
-## Lista de projetos
+## Ficheiros de Configuração
 
-O ficheiro 'cluster-config-data.csv' é o ficheiro utilizado pelo script para criar os containers e configurar os clusters Kubernetes desejados. Este mesmo ficheiro é utilizado quando desejamos eliminar projetos. É um ficheiro CSV que utiliza uma vírgula como separador. Todas as linhas devem terminar com uma vírgula. Cada linha deve conter nove colunas.
+Os ficheiros que descrevem os containers e os nós do Kubernetes são armazenados no diretório 'config' do projeto. Dentro deste diretório, existe um ficheiro chamado 'default.csv.' Este ficheiro é utilizado pelo script como uma lista de containers LXC e nós do Kubernetes que podem ser criados ou destruídos.
 
-A lista de projetos a seguir é fornecida para sua referência, mas deve modificá-la para atender aos seus requisitos específicos. Tentaremos explicar cada coluna da forma mais clara possível, ajudando-o a entender o seu papel na criação de clusters.
+No entanto, a ideia por trás deste projeto é possibilitar a configuração de vários projetos e facilitar a criação ou destruição dos projetos ou listas de projetos específicos, conforme necessário.
+
+Para isso, o script permite especificar, através de um parâmetro, qual ficheiro utilizar. Esses ficheiros devem estar localizados na pasta 'config.' É neste local que criamos os ficheiros que contêm as listas de containers LXD e nós do Kubernetes que precisamos. Podemos criar quantos ficheiros forem necessários para os nossos projetos. [Ver como usar](#Verificar o Ficheiro de Configuração)
+
+Esses ficheiros utilizam o formato CSV e empregam a vírgula como separador. Todas as linhas devem terminar com uma vírgula, e cada linha deve conter nove colunas.
+
+A tabela abaixo apresenta um exemplo de um ficheiro contendo nove containers LXD, organizados em três clusters do Kubernetes, com três containers em cada cluster do Kubernetes.
 
 | LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT_DOMAIN            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
 | --------------- | --------------- | ---------------------------- | ------------------- | -------- | ---------------------------- | ---------------- | -------------- | ----------- |
