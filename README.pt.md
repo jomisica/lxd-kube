@@ -51,13 +51,13 @@ A lista de projetos a seguir é fornecida para sua referência, mas deve modific
 
 | LXD_PROJECT    | LXD_PROFILE     | LXD_CONTAINER_NAME/HOSTNAME | LXC_CONTAINER_IMAGE | K8S_TYPE | K8S_API_ENDPOINT_DOMAIN            | K8S_CLUSTER_NAME | K8S_POD_SUBNET | K8S_VERSION |
 | --------------- | --------------- | ---------------------------- | ------------------- | -------- | ---------------------------- | ---------------- | -------------- | ----------- |
-| project         | k8s-kmaster     | project-kmaster              | ubuntu:22.04        | master   | test.pt     | project          | 10.10.0.0/16  | 1.28.2      |
+| project         | k8s-kmaster     | project-kmaster              | ubuntu:22.04        | master   | project.pt     | project          | 10.10.0.0/16  | 1.28.2      |
 | project         | k8s-kworker1    | project-kworker1             | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project         | k8s-kworker2    | project-kworker2             | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
-| project-dev     | k8s-dev-kmaster | project-dev-kmaster          | ubuntu:22.04        | master   | test.pt   | project-dev      | 10.11.0.0/16  | 1.28.2      |
+| project-dev     | k8s-dev-kmaster | project-dev-kmaster          | ubuntu:22.04        | master   | project.pt   | project-dev      | 10.11.0.0/16  | 1.28.2      |
 | project-dev     | k8s-dev-kworker1| project-dev-kworker1         | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project-dev     | k8s-dev-kworker2| project-dev-kworker2         | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
-| project-test    | k8s-test-kmaster| project-test-kmaster         | ubuntu:22.04        | master   | test.pt  | project-test     | 10.12.0.0/16  | 1.28.2      |
+| project-test    | k8s-test-kmaster| project-test-kmaster         | ubuntu:22.04        | master   | project.pt  | project-test     | 10.12.0.0/16  | 1.28.2      |
 | project-test    | k8s-test-kworker1| project-test-kworker1       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 | project-test    | k8s-test-kworker2| project-test-kworker2       | ubuntu:22.04        | worker   |                            |                  |              | 1.28.2      |
 
