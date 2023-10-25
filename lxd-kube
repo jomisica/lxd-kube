@@ -7,9 +7,12 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 LXD_DONE=false
+CONFIG_FILE=default.csv
 
 usage() {
-    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig]"
+    echo
+    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig] --config file.csv"
+    echo
     exit 1
 }
 
@@ -488,7 +491,7 @@ provision_kubernetes_cluster() {
                 echo "##### [$?] Error creating ddd directory for logs"
                 exit 255
             fi
-            
+
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
             echo "export K8S_VERSION=${values[8]}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${values[0]}"/"${values[2]}"/bootstrap.sh"))" | lxc --project "${values[0]}" exec "${values[2]}" bash >>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
             if [ $? -eq 0 ]; then
@@ -581,9 +584,14 @@ provision() {
 }
 
 prepare_input_file() {
-    content=($(cat "cluster-config-data.csv"))
+    #content=($(cat "cluster-config-data.csv"))
+    if ! [ -f "config/${CONFIG_FILE}" ]; then
+        echo "The 'config/${CONFIG_FILE}' configuration file does not exist"
+        exit
+    fi
+
     local IFS=$'\n'
-    read -d '' -r -a lines <"cluster-config-data.csv"
+    read -d '' -r -a lines <"config/${CONFIG_FILE}"
 
     DEPLOY_LIST=()
     a=${#lines[@]}
@@ -624,13 +632,48 @@ show_valid_config() {
     done
 }
 
+parse_options() {
+    OPTIND=2
+    optspec=":-:"
+    while getopts "$optspec" optchar "$@"; do
+        case "${optchar}" in
+        -)
+            case "${OPTARG}" in
+            config)
+                val="${!OPTIND}"
+                OPTIND=$(($OPTIND + 1))
+                CONFIG_FILE="${val}"
+                ;;
+            config=*)
+                val=${OPTARG#*=}
+                opt=${OPTARG%=$val}
+                CONFIG_FILE="${val}"
+                ;;
+            *)
+                echo "Unknown option --${OPTARG}" >&2
+                usage
+                exit 255
+                ;;
+            esac
+            ;;
+        *)
+            if [ "$OPTERR" != 1 ] || [ "${optspec:0:1}" = ":" ]; then
+                echo "Non-option argument: '-${OPTARG}'" >&2
+                usage
+                exit 255
+            fi
+            ;;
+        esac
+    done
+}
+
 case "$1" in
 provision)
     echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
     if [ "$2" = "kubernetes" ]; then
         LXD_DONE=true
     fi
-
+    parse_options "$@"
     prepare_input_file
     provision
     echo -e "\n# END Provisioning Kubernetes Cluster inside LXC containers\n"
@@ -648,6 +691,7 @@ destroyprojects)
     ;;
 verifyconfig)
     echo -e "\nCheck the configuration file...\n"
+    parse_options "$@"
     prepare_input_file show
     ;;
 *)
