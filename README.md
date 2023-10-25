@@ -261,6 +261,9 @@ Using different configuration file.
 $ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 ```
 
+
+The actions are always carried out in bulk. For example, we can stop all LXD containers listed in the configuration file. It is essential to separate projects into different configuration files. However, if a file contains more than one project, the actions are consistently applied to all containers listed in the file.
+
 ### Stop containers
 
 Using different configuration file.

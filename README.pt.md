@@ -259,6 +259,9 @@ Usando o ficheiro configuração diferente.
 $ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
 ```
 
+
+As ações são sempre realizadas em massa; por exemplo, podemos interromper todos os containers do LXD listados no ficheiro de configuração. Sempre devemos separar os projetos em diferentes ficheiros de configuração. No entanto, se um arquivo contiver mais de um projeto, as ações serão aplicadas a todos os containers listados no ficheiro.
+
 ### Parar containers
 
 Usando o ficheiro configuração diferente.
