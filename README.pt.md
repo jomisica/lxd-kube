@@ -326,7 +326,7 @@ $ bash lxd-kube verifyconfig --config k8s-1.22.0.csv
 
 ### Provisionar Clusters Kubernetes
 
-Para provisionar os projetos definidos no ficheiro de configuração 'cluster-config-data.csv', execute o seguinte comando:
+Para provisionar os projetos definidos no ficheiro de configuração, execute o seguinte comando:
 
 Usando o ficheiro configuração por defeito.
 ```shell
@@ -340,7 +340,7 @@ $ bash lxd-kube provision --config k8s-1.22.0.csv
 
 ### Destruir containers LXD e clusters Kubernetes
 
-Para destruir os projetos definidos no ficheiro de configuração 'cluster-config-data.csv', execute o seguinte comando:
+Para destruir os projetos definidos no ficheiro de configuração, execute o seguinte comando:
 
 Usando o ficheiro configuração por defeito.
 ```shell
