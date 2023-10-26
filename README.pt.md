@@ -77,9 +77,9 @@ Primeiro, o script executa uma filtragem para remover linhas em branco, aplicand
 
 Após a verificação inicial do arquivo de configuração, o script passa a criar os projetos especificados no arquivo no ambiente LXD. A criação desses projetos é essencial, pois eles servem como espaços isolados para conter containers, perfis, imagens e outros recursos associados.
 
-Em seguida, o script verifica se o ambiente LXD está configurado em modo cluster. Caso não esteja, ele analisa se existe um arquivo de configuração de ponte (bridge) em "lxc/lxdbridge/<nome do projeto>/bridge.yaml". Se o arquivo existir, o script cria uma ponte NAT local de acordo com as configurações presentes no arquivo. Caso o arquivo não exista, nenhuma ponte é criada. Isso permite uma configuração ideal para laptops ou dispositivos com apenas uma interface de rede.
+Em seguida, o script verifica se o ambiente LXD está configurado em modo cluster. Caso não esteja, ele analisa se existe um arquivo de configuração de ponte (bridge) em "lxc/lxdbridge/< nome do projeto >/bridge.yaml". Se o arquivo existir, o script cria uma ponte NAT local de acordo com as configurações presentes no arquivo. Caso o arquivo não exista, nenhuma ponte é criada. Isso permite uma configuração ideal para laptops ou dispositivos com apenas uma interface de rede.
 
-Após a configuração das pontes, o script percorre o arquivo de configuração criando perfis para os containers. Cada perfil é associado a um arquivo de perfil correspondente em "lxc/profiles/<nome do projeto>/<nome do perfil>.yaml". Se um arquivo de perfil não existir, o perfil padrão fornecido com o projeto em "lxc/profiles/default/k8s.yaml" é utilizado.
+Após a configuração das pontes, o script percorre o arquivo de configuração criando perfis para os containers. Cada perfil é associado a um arquivo de perfil correspondente em "lxc/profiles/< nome do projeto >/< nome do perfil >.yaml". Se um arquivo de perfil não existir, o perfil padrão fornecido com o projeto em "lxc/profiles/default/k8s.yaml" é utilizado.
 
 O próximo passo é a criação dos containers necessários para o projeto, com cada container recebendo o perfil adequado criado anteriormente.
 
@@ -89,7 +89,7 @@ Após a criação dos containers, o script aguarda até que todos estejam em exe
 
 O script, então, inicia a instalação do Kubernetes nos containers, começando com o container mestre. Antes disso, ele verifica se o domínio fornecido no arquivo de configuração se resolve para o endereço IP atribuído ao container. Se a resolução for bem-sucedida, a instalação continua; caso contrário, ela é interrompida.
 
-Depois, o script executa um script de inicialização específico para o container mestre, se estiver presente em "kubernetes/bootstrap/<nome do projeto>/< nome do container hostname>/bootstrap.sh". Se esse arquivo não existir, é utilizado o script padrão em "kubernetes/bootstrap/default/bootstrap.sh". O script de inicialização é responsável por instalar dependências, incluindo o Kubernetes (geralmente o containerd), mas pode ser personalizado para atender a necessidades específicas.
+Depois, o script executa um script de inicialização específico para o container mestre, se estiver presente em "kubernetes/bootstrap/< nome do projeto >/< nome do container hostname >/bootstrap.sh". Se esse arquivo não existir, é utilizado o script padrão em "kubernetes/bootstrap/default/bootstrap.sh". O script de inicialização é responsável por instalar dependências, incluindo o Kubernetes (geralmente o containerd), mas pode ser personalizado para atender a necessidades específicas.
 
 Em seguida, o script gera arquivos de configuração para configurar o Kubernetes com base nas informações do arquivo de configuração e no token gerado.
 
