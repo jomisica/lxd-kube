@@ -71,6 +71,22 @@ This is the file tree that is involved in this example project that comes with t
             └── k8s-kworker2.yaml
 ```
 
+When starting the script with a certain configuration file, which in this case is test-local.csv. The script starts by filtering, removing empty lines and trimming the data in each line and removing lines with the wrong number of columns.
+A minimal check on the configuration file.
+
+Then the script starts looping over the rows of data.
+
+Start by creating all existing projects in the configuration file in LXD, so that within these projects there can be associated containers, profiles, images, etc.
+
+Then the script detects whether LXD is working in a cluster. If it is not working in a cluster, it checks whether the file lxc/lxdbridge/< current project >/bridge.yaml exists. If this file exists, it creates a local NAT bridge with the configurations present in this file. If the file does not exist it does not create any bridge. When there is a bridge configured in the profiles, they must be in agreement. As you can see from the files made available for this test project. This is an ideal configuration to have on laptops.
+
+Then the script loops again creating all the profiles that are listed in the configuration file and each of them is assigned the name of the files in this path, lxc/profiles/< project name>/< profile name >.yaml. If this file does not exist, the default profile, available with the project, which is located in the following directory lxc/profiles/default/k8s.yaml, is used instead.
+
+Then it goes into a loop again, creating all the containers necessary for the project, and each of them associates the corresponding profile created in the previous step.
+
+At the moment everything is created in LXD, projects, profiles, containers.
+
+
 ## Installing LXD on Ubuntu
 
 You can see more information on how to install and configure LXD at [this link](https://documentation.ubuntu.com/lxd/en/latest/installing/).

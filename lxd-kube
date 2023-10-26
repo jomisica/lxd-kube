@@ -92,11 +92,11 @@ get_bridge() {
 }
 
 is_cluster() {
-    local tmp=$(lxc info | grep "server_clustered: true" 2>/dev/null)
+    lxc info | grep "server_clustered: true" >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         return 0
     else
-        return $?
+        return 1
     fi
 }
 
