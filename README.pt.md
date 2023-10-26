@@ -82,9 +82,9 @@ Depois o script começa a fazer loops sobre as linhas de dados.
 
 Começa por criar todos os projectos existentes no ficheiro de configuração no LXD, para que dentro destes projectos possam existir containers, perfis, imagens, etc, associadas.
 
-Depois o script detecta se o LXD está a trabalhar em cluster. Se ele não estiver a treabalhar em cluster, ele analiza se o ficheiro lxc/lxdbridge/< currente projecto >/bridge.yaml existe. Se esse ficheiro existir ele cria uma bridge local em NAT com as configurações presentes neste ficheiro. Se o ficheiro não existir ele não cria qualquer bridge. Quando existe a bridge configurada nos perfis de estar de acordo. Como podem ver pelos ficheiros disponibilizados para este projecto de test. Esta é uma configuração ideal para ter em portateis. 
+Depois o script detecta se o LXD está a trabalhar em cluster. Se ele não estiver a treabalhar em cluster, ele analisa se o ficheiro lxc/lxdbridge/< corrente projecto >/bridge.yaml existe. Se esse ficheiro existir ele cria uma bridge local em NAT com as configurações presentes neste ficheiro. Se o ficheiro não existir ele não cria qualquer bridge. Quando existe a bridge configurada nos perfis de estar de acordo. Como podem ver pelos ficheiros disponibilizados para este projecto de test. Esta é uma configuração ideal para ter em portateis. 
 
-Depois o script faz um loop novamente criando todos os perfis que estejam listados no ficheiro de configuração e a cada um deles é atribuido o contudo dos ficheiros neste caminho, lxc/profiles/< nome do projecto >/< nome do perfil >.yaml. Se este ficheiro não existir é usado em sua substituição o perfil por defeito, disponibilizado com o projecto, que se encontra no seguinte directório lxc/profiles/default/k8s.yaml.
+Depois o script faz um loop novamente criando todos os perfis que estejam listados no ficheiro de configuração e a cada um deles é atribuido o conteudo dos ficheiros neste caminho, lxc/profiles/< nome do projecto >/< nome do perfil >.yaml. Se este ficheiro não existir é usado em sua substituição o perfil por defeito, disponibilizado com o projecto, que se encontra no seguinte directório lxc/profiles/default/k8s.yaml.
 
 Depois entra em loop novamente criando todos os containers necessários para o projecto, e a cada um deles associa o correspondente perfil criado no passo anterior.
 
@@ -92,14 +92,14 @@ Depois é adicionada a chave publica do SSH a cada container, para podermos aced
 
 Neste momento está tudo criado no LXD, projectos, perfis, containers.
 
-O script aguarda que todos os containers estejam a correr e com a interface de rede activa com IP, para poder começão a instalar o kubernetes nos containers.
+O script aguarda que todos os containers estejam a correr e com a interface de rede activa com IP, para poder começar a instalar o kubernetes nos containers.
 
-O script faz um loop pelos containers e começa com o primeiro da lista que tem de ser o master plane do kubernetes. Resolve o dominio que é fornecido no ficheiro de configuração, para saber se resolve para o IP que o container ganhou quer via dhcp neste caso ou conoutra configuração através do perfil do container no processo de criação. Se o dominio resolver correctamente para o IP do container, a instalação prossegue, caso contrario é abortada a instalação.
+O script faz um loop pelos containers e começa com o primeiro da lista que tem de ser o master plane do kubernetes. Resolve o dominio que é fornecido no ficheiro de configuração, para saber se resolve para o IP que o container ganhou quer via dhcp neste caso ou com outra configuração através do perfil do container no processo de criação. Se o dominio resolver correctamente para o IP do container, a instalação prossegue, caso contrario é abortada a instalação.
 
 Depois é lançado o script de bootstrap que se encontra no seguinte directorio, kubernetes/bootstrap/< nome do projecto >/< nome do container hostname >/bootstrap.sh se existir. Se este ficheiro não existir é usado o script de bootstrap por defeito que se encontra no seguinte directorio, kubernetes/bootstrap/default/bootstrap.sh. 
 Este script tem como função instalar as dependencias e o kubernetes, containerd por defeito. No entanto pode ser modificado para fazer algo mais que seja necessário em determinado contexto.
 
-Depois os script gera os ficheiros de configuração para configurar o kubernetes com os dados do ficheiro de configuração bem como token gerado necessário.
+Depois o script gera os ficheiros de configuração para configurar o kubernetes com os dados do ficheiro de configuração bem como token gerado necessário.
 
 Depois são descarregadas as imagens base do kubernetes, que depende claro da versão do cluster que estamos a instalar. Este processo é bem demorado, dependendo da ocasião chega a meia hora.
 
@@ -120,7 +120,7 @@ Este processo dos workers nodes é o mesmo para todos os workers nodes.
 
 Quando o script termina de adicionar todos os worker nodes, fica concluida a configuração e o script termina.
 
-Se houver algum error durante o processo todo o script é abortado, com alguma menssagem de erro.
+Se houver algum error durante o processo todo o script é abortado, com alguma mensagem de erro.
 
 
 ## Instalação do LXD no Ubuntu
