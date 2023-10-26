@@ -35,6 +35,7 @@ I will explain how script execution works and the relationship it has with templ
 
 This is the file tree that is involved in this example project that comes with the project.
 
+
 ```shell
 ├── config
 │   └── test-local.csv

@@ -35,6 +35,7 @@ Vou explicar como funciona a execução do script e a relação que tem com os t
 
 Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que vem acompanhado com o projecto.
 
+
 ```shell
 ├── config
 │   └── test-local.csv
