@@ -71,20 +71,43 @@ This is the file tree that is involved in this example project that comes with t
             └── k8s-kworker2.yaml
 ```
 
-When starting the script with a certain configuration file, which in this case is test-local.csv. The script starts by filtering, removing empty lines and trimming the data in each line and removing lines with the wrong number of columns.
-A minimal check on the configuration file.
+When starting the script with a specific configuration file, in this case 'test-local.csv,' the script begins by filtering the data, removing empty lines, trimming each line, and eliminating lines with the incorrect number of columns. It performs a basic check on the configuration file.
 
-Then the script starts looping over the rows of data.
+The script then iterates through the data rows. It starts by creating all the projects listed in the configuration file within LXD. These projects serve as containers, profiles, images, etc.
 
-Start by creating all existing projects in the configuration file in LXD, so that within these projects there can be associated containers, profiles, images, etc.
+The script checks whether LXD is operating in a cluster. If not, it checks the existence of the file 'lxc/lxdbridge/<current project>/bridge.yaml.' If the file exists, it creates a local NAT bridge with the configurations from this file. If the file doesn't exist, no bridge is created. It's important that the bridge configurations align with the profiles, as demonstrated in the provided files for this test project. This configuration is ideal for laptops.
 
-Then the script detects whether LXD is working in a cluster. If it is not working in a cluster, it checks whether the file lxc/lxdbridge/< current project >/bridge.yaml exists. If this file exists, it creates a local NAT bridge with the configurations present in this file. If the file does not exist it does not create any bridge. When there is a bridge configured in the profiles, they must be in agreement. As you can see from the files made available for this test project. This is an ideal configuration to have on laptops.
+The script continues by creating all the profiles listed in the configuration file, naming each of them after the files located in 'lxc/profiles/<project name>/<profile name>.yaml.' If a file is missing, it defaults to the profile named 'k8s.yaml' available within 'lxc/profiles/default/'.
 
-Then the script loops again creating all the profiles that are listed in the configuration file and each of them is assigned the name of the files in this path, lxc/profiles/< project name>/< profile name >.yaml. If this file does not exist, the default profile, available with the project, which is located in the following directory lxc/profiles/default/k8s.yaml, is used instead.
+The script proceeds to create all the necessary containers for the project, associating each container with the corresponding profile created earlier.
 
-Then it goes into a loop again, creating all the containers necessary for the project, and each of them associates the corresponding profile created in the previous step.
+It adds an SSH public key to each container, enabling access for analysis.
 
-At the moment everything is created in LXD, projects, profiles, containers.
+Once everything is set up in LXD projects, profiles, containers, the script waits for all containers to be running with active network interfaces and IP addresses before it can begin installing Kubernetes in the containers.
+
+The script loops through the containers, starting with the first one, typically the Kubernetes master node. It checks whether the domain provided in the configuration file resolves to the container's IP address, assigned via DHCP or another method through the container profile during the creation process. If the domain resolves correctly, the installation proceeds; otherwise, it's aborted.
+
+The script launches the bootstrap script located at 'kubernetes/bootstrap/<project name>/<container name hostname>/bootstrap.sh' if it exists. If not, it uses the default bootstrap script located at 'kubernetes/bootstrap/default/bootstrap.sh.' This script's role is to install dependencies and Kubernetes components, including containerd, but it can be customized for specific needs.
+
+Next, the script generates configuration files to set up Kubernetes using data from the configuration file and the necessary generated tokens.
+
+Base Kubernetes images are downloaded, depending on the cluster's version. This step can be time-consuming, taking up to half an hour on some occasions.
+
+The master node is then initialized with the configuration files generated in previous steps. If everything goes smoothly, the master node is successfully initialized.
+
+Subsequently, Flannel is installed in Kubernetes to manage the network and prepare for the addition of worker nodes.
+
+That essentially concludes the installation of the master node.
+
+The script then begins working on the worker nodes, which is a simpler and faster process.
+
+It again checks for the existence of a custom bootstrap script in 'kubernetes/bootstrap/<project name>/<container name hostname>/bootstrap.sh,' falling back to the default script in 'kubernetes/bootstrap/default/bootstrap.sh' if needed. This script handles the software installation process.
+
+Using the configuration file generated during the master node configuration, the script adds worker nodes to the cluster. This process is the same for all worker nodes.
+
+When the script finishes adding all worker nodes, the configuration is complete, and the script concludes.
+
+If an error occurs during any step of the process, the entire script is aborted, and an error message is displayed.
 
 
 ## Installing LXD on Ubuntu

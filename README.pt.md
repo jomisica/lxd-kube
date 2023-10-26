@@ -27,7 +27,7 @@ Já no caso dos desenvolvedores, além dos clusters utilizados por profissionais
 
 Este script permite a criação de ambos os tipos de cenários: um para uso estável, com base em uma infraestrutura de rede confiável, e outro para desenvolvedores que precisam de flexibilidade durante o processo de desenvolvimento. O cluster Kubernetes permanece estável mesmo se o computador de desenvolvimento for reiniciado, pois o Kubernetes requer que os IPs permaneçam os mesmos desde a instalação.
 
-Nesses casos, o LXD não funciona como um cluster, mas utiliza uma bridge com NAT e aproveita o laptop do desenvolvedor como gateway para a Internet. Os endereços atribuídos aos contêineres no cluster seguem um padrão, com a única variação sendo o IP ou a rede à qual o computador está fisicamente conectado. A principal preocupação é escolher uma rede que não esteja em uso nos locais frequentados, para garantir que funcione perfeitamente em todos os lugares.
+Nesses casos, o LXD não funciona como um cluster, mas utiliza uma bridge com NAT e aproveita o laptop do desenvolvedor como gateway para a Internet. Os endereços atribuídos aos containers no cluster seguem um padrão, com a única variação sendo o IP ou a rede à qual o computador está fisicamente conectado. A principal preocupação é escolher uma rede que não esteja em uso nos locais frequentados, para garantir que funcione perfeitamente em todos os lugares.
 
 ## A árvore de ficheiros envolvido em projecto
 
@@ -71,24 +71,37 @@ Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que 
             └── k8s-kworker2.yaml
 ```
 
-Quando se inicia o script com um determinado ficheiro de configuração, que neste caso é test-local.csv. O script começa por uma filtragem removendo linhas vazias e fazendo trim aos dados de cada linha e removendo linhas com um numero de colunas erradas.
-Uma verificação minima no ficheiro de configuração.
+Quando o script é iniciado com um determinado arquivo de configuração, neste caso, "test-local.csv", ele começa realizando uma série de verificações e ações específicas para criar e configurar ambientes Kubernetes dentro de containers LXD de maneira eficiente.
 
-Depois o script começa a fazer loops sobre as linhas de dados. 
+Primeiro, o script executa uma filtragem para remover linhas em branco, aplicando a formatação de cada linha e eliminando aquelas com um número incorreto de colunas. Isso ajuda a garantir que o arquivo de configuração esteja minimamente correto.
 
-Começa por criar todos os projectos existentes no ficheiro de configuração no LXD, para que dentro destes projectos possam existir containers, perfis, imagens, etc, associadas.
+Após a verificação inicial do arquivo de configuração, o script passa a criar os projetos especificados no arquivo no ambiente LXD. A criação desses projetos é essencial, pois eles servem como espaços isolados para conter containers, perfis, imagens e outros recursos associados.
 
-Depois o script detecta se o LXD está a trabalhar em cluster. Se ele não estiver a treabalhar em cluster, ele analiza se o ficheiro lxc/lxdbridge/< currente projecto >/bridge.yaml existe. Se esse ficheiro existir ele cria uma bridge local em NAT com as configurações presentes neste ficheiro. Se o ficheiro não existir ele não cria qualquer bridge. Quando existe a bridge configurada nos perfis de estar de acordo. Como podem ver pelos ficheiros disponibilizados para este projecto de test. Esta é uma configuração ideal para ter em portateis. 
+Em seguida, o script verifica se o ambiente LXD está configurado em modo cluster. Caso não esteja, ele analisa se existe um arquivo de configuração de ponte (bridge) em "lxc/lxdbridge/<nome do projeto>/bridge.yaml". Se o arquivo existir, o script cria uma ponte NAT local de acordo com as configurações presentes no arquivo. Caso o arquivo não exista, nenhuma ponte é criada. Isso permite uma configuração ideal para laptops ou dispositivos com apenas uma interface de rede.
 
-Depois o script faz um loop novamente criando todos os perfis que estejam listados no ficheiro de configuração e a cada um deles é atribuido o contudo dos ficheiros neste caminho, lxc/profiles/< nome do projecto>/< nome do perfil >.yaml. Se este ficheiro não existir é usado em sua substituição o perfil por defeito, disponibilizado com o projecto, que se encontra no seguinte directório lxc/profiles/default/k8s.yaml.
+Após a configuração das pontes, o script percorre o arquivo de configuração criando perfis para os containers. Cada perfil é associado a um arquivo de perfil correspondente em "lxc/profiles/<nome do projeto>/<nome do perfil>.yaml". Se um arquivo de perfil não existir, o perfil padrão fornecido com o projeto em "lxc/profiles/default/k8s.yaml" é utilizado.
 
-Depois entra em loop novamente criando todos os containers necessários para o projecto, e a cada um deles associa o correspondente perfil criado no passo anterior.
+O próximo passo é a criação dos containers necessários para o projeto, com cada container recebendo o perfil adequado criado anteriormente.
 
-Neste momento está tudo criado no LXD, projectos, perfis, containers.
+A chave pública do SSH é adicionada a cada container para permitir o acesso, geralmente para fins de depuração ou análise.
 
+Após a criação dos containers, o script aguarda até que todos estejam em execução e tenham uma interface de rede ativa com um endereço IP. Isso é importante para garantir que os containers estejam prontos para receber a instalação do Kubernetes.
 
+O script, então, inicia a instalação do Kubernetes nos containers, começando com o container mestre. Antes disso, ele verifica se o domínio fornecido no arquivo de configuração se resolve para o endereço IP atribuído ao container. Se a resolução for bem-sucedida, a instalação continua; caso contrário, ela é interrompida.
 
+Depois, o script executa um script de inicialização específico para o container mestre, se estiver presente em "kubernetes/bootstrap/<nome do projeto>/<nome do container hostname>/bootstrap.sh". Se esse arquivo não existir, é utilizado o script padrão em "kubernetes/bootstrap/default/bootstrap.sh". O script de inicialização é responsável por instalar dependências, incluindo o Kubernetes (geralmente o containerd), mas pode ser personalizado para atender a necessidades específicas.
 
+Em seguida, o script gera arquivos de configuração para configurar o Kubernetes com base nas informações do arquivo de configuração e no token gerado.
+
+Após essa fase, o script faz o download das imagens base do Kubernetes, o que pode ser um processo demorado, dependendo da versão do cluster.
+
+Após o download das imagens, o script inicia o plano mestre usando o arquivo de configuração gerado anteriormente. Se tudo ocorrer sem problemas, o plano mestre é inicializado.
+
+Em seguida, o script instala o Flannel no Kubernetes para administrar a rede e preparar os nós de trabalho para se juntarem ao cluster.
+
+Finalmente, o script passa a configurar os nós de trabalho, que é um processo mais simples e rápido em comparação com o nó mestre.
+
+Quando o script termina de adicionar todos os nós de trabalho, a configuração está completa, e o script é encerrado. Caso ocorra algum erro durante o processo, o script será interrompido e uma mensagem de erro correspondente será gerada.
 
 
 ## Instalação do LXD no Ubuntu
