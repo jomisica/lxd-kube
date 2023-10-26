@@ -29,6 +29,46 @@ Este script permite a criação de ambos os tipos de cenários: um para uso est�
 
 Nesses casos, o LXD não funciona como um cluster, mas utiliza uma bridge com NAT e aproveita o laptop do desenvolvedor como gateway para a Internet. Os endereços atribuídos aos contêineres no cluster seguem um padrão, com a única variação sendo o IP ou a rede à qual o computador está fisicamente conectado. A principal preocupação é escolher uma rede que não esteja em uso nos locais frequentados, para garantir que funcione perfeitamente em todos os lugares.
 
+## A árvore de ficheiros envolvido em projecto
+
+Vou explicar como funciona a execução do script e a relação que tem com os templates e os scripts de bootstrap.
+
+Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que vem acompanhado com o projecto.
+
+```shell
+├── config
+│   └── test-local.csv
+├── kubernetes
+│   ├── bootstrap
+│   │   ├── default
+│   │   │   └── bootstrap.sh
+│   │   └── project
+│   │       ├── project-kmaster
+│   │       │   └── bootstrap.sh
+│   │       ├── project-kworker1
+│   │       │   └── bootstrap.sh
+│   │       └── project-kworker2
+│   │           └── bootstrap.sh
+│   └── templates
+│       ├── default
+│       │   ├── kubeadm-config.yaml
+│       │   ├── kubeadm-flannel.yaml
+│       │   ├── kubeadm-init-config.yaml
+│       │   └── kubeadm-join-config.yaml
+│       └── project
+│           └── kubeadm-init-config.yaml
+├── lxc
+    ├── lxdbridge
+    │   └── test
+    │       └── bridge.yaml
+    ├── profiles
+        ├── default
+        │   └── k8s.yaml
+        └── test
+            ├── k8s-kmaster.yaml
+            ├── k8s-kworker1.yaml
+            └── k8s-kworker2.yaml
+```
 
 ## Instalação do LXD no Ubuntu
 

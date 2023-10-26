@@ -29,6 +29,46 @@ This script enables the creation of both types of situations: one for stable use
 
 In these cases, LXD does not function as a cluster but uses a bridge with NAT and leverages the developer's laptop as a gateway to the internet. The addresses assigned to the containers within the cluster are standardized, with the only variation being the IP address or network to which the computer is physically connected. The main concern is selecting a network that is not already in use in the locations frequented, to ensure it works seamlessly everywhere.
 
+## The tree of files involved in the project
+
+I will explain how script execution works and the relationship it has with templates and bootstrap scripts.
+
+This is the file tree that is involved in this example project that comes with the project.
+
+```shell
+├── config
+│   └── test-local.csv
+├── kubernetes
+│   ├── bootstrap
+│   │   ├── default
+│   │   │   └── bootstrap.sh
+│   │   └── project
+│   │       ├── project-kmaster
+│   │       │   └── bootstrap.sh
+│   │       ├── project-kworker1
+│   │       │   └── bootstrap.sh
+│   │       └── project-kworker2
+│   │           └── bootstrap.sh
+│   └── templates
+│       ├── default
+│       │   ├── kubeadm-config.yaml
+│       │   ├── kubeadm-flannel.yaml
+│       │   ├── kubeadm-init-config.yaml
+│       │   └── kubeadm-join-config.yaml
+│       └── project
+│           └── kubeadm-init-config.yaml
+├── lxc
+    ├── lxdbridge
+    │   └── test
+    │       └── bridge.yaml
+    ├── profiles
+        ├── default
+        │   └── k8s.yaml
+        └── test
+            ├── k8s-kmaster.yaml
+            ├── k8s-kworker1.yaml
+            └── k8s-kworker2.yaml
+```
 
 ## Installing LXD on Ubuntu
 
