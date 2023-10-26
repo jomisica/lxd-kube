@@ -75,9 +75,9 @@ When starting the script with a specific configuration file, in this case 'test-
 
 The script then iterates through the data rows. It starts by creating all the projects listed in the configuration file within LXD. These projects serve as containers, profiles, images, etc.
 
-The script checks whether LXD is operating in a cluster. If not, it checks the existence of the file 'lxc/lxdbridge/<current project>/bridge.yaml.' If the file exists, it creates a local NAT bridge with the configurations from this file. If the file doesn't exist, no bridge is created. It's important that the bridge configurations align with the profiles, as demonstrated in the provided files for this test project. This configuration is ideal for laptops.
+The script checks whether LXD is operating in a cluster. If not, it checks the existence of the file 'lxc/lxdbridge/< current project >/bridge.yaml.' If the file exists, it creates a local NAT bridge with the configurations from this file. If the file doesn't exist, no bridge is created. It's important that the bridge configurations align with the profiles, as demonstrated in the provided files for this test project. This configuration is ideal for laptops.
 
-The script continues by creating all the profiles listed in the configuration file, naming each of them after the files located in 'lxc/profiles/<project name>/<profile name>.yaml.' If a file is missing, it defaults to the profile named 'k8s.yaml' available within 'lxc/profiles/default/'.
+The script continues by creating all the profiles listed in the configuration file, naming each of them after the files located in 'lxc/profiles/< project name >/< profile name >.yaml.' If a file is missing, it defaults to the profile named 'k8s.yaml' available within 'lxc/profiles/default/'.
 
 The script proceeds to create all the necessary containers for the project, associating each container with the corresponding profile created earlier.
 
@@ -87,7 +87,7 @@ Once everything is set up in LXD projects, profiles, containers, the script wait
 
 The script loops through the containers, starting with the first one, typically the Kubernetes master node. It checks whether the domain provided in the configuration file resolves to the container's IP address, assigned via DHCP or another method through the container profile during the creation process. If the domain resolves correctly, the installation proceeds; otherwise, it's aborted.
 
-The script launches the bootstrap script located at 'kubernetes/bootstrap/<project name>/<container name hostname>/bootstrap.sh' if it exists. If not, it uses the default bootstrap script located at 'kubernetes/bootstrap/default/bootstrap.sh.' This script's role is to install dependencies and Kubernetes components, including containerd, but it can be customized for specific needs.
+The script launches the bootstrap script located at 'kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh' if it exists. If not, it uses the default bootstrap script located at 'kubernetes/bootstrap/default/bootstrap.sh.' This script's role is to install dependencies and Kubernetes components, including containerd, but it can be customized for specific needs.
 
 Next, the script generates configuration files to set up Kubernetes using data from the configuration file and the necessary generated tokens.
 
@@ -101,7 +101,7 @@ That essentially concludes the installation of the master node.
 
 The script then begins working on the worker nodes, which is a simpler and faster process.
 
-It again checks for the existence of a custom bootstrap script in 'kubernetes/bootstrap/<project name>/<container name hostname>/bootstrap.sh,' falling back to the default script in 'kubernetes/bootstrap/default/bootstrap.sh' if needed. This script handles the software installation process.
+It again checks for the existence of a custom bootstrap script in 'kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh,' falling back to the default script in 'kubernetes/bootstrap/default/bootstrap.sh' if needed. This script handles the software installation process.
 
 Using the configuration file generated during the master node configuration, the script adds worker nodes to the cluster. This process is the same for all worker nodes.
 

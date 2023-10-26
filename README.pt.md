@@ -89,7 +89,7 @@ Após a criação dos containers, o script aguarda até que todos estejam em exe
 
 O script, então, inicia a instalação do Kubernetes nos containers, começando com o container mestre. Antes disso, ele verifica se o domínio fornecido no arquivo de configuração se resolve para o endereço IP atribuído ao container. Se a resolução for bem-sucedida, a instalação continua; caso contrário, ela é interrompida.
 
-Depois, o script executa um script de inicialização específico para o container mestre, se estiver presente em "kubernetes/bootstrap/<nome do projeto>/<nome do container hostname>/bootstrap.sh". Se esse arquivo não existir, é utilizado o script padrão em "kubernetes/bootstrap/default/bootstrap.sh". O script de inicialização é responsável por instalar dependências, incluindo o Kubernetes (geralmente o containerd), mas pode ser personalizado para atender a necessidades específicas.
+Depois, o script executa um script de inicialização específico para o container mestre, se estiver presente em "kubernetes/bootstrap/<nome do projeto>/< nome do container hostname>/bootstrap.sh". Se esse arquivo não existir, é utilizado o script padrão em "kubernetes/bootstrap/default/bootstrap.sh". O script de inicialização é responsável por instalar dependências, incluindo o Kubernetes (geralmente o containerd), mas pode ser personalizado para atender a necessidades específicas.
 
 Em seguida, o script gera arquivos de configuração para configurar o Kubernetes com base nas informações do arquivo de configuração e no token gerado.
 
