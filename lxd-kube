@@ -10,6 +10,7 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
+DELETE_GENERATED=false
 FORCE=false
 CONFIG_FILE=
 
@@ -481,6 +482,16 @@ delete_lxc_profiles() {
     echo
 }
 
+delete_generated_files() {
+
+    rm -fr "kubernetes/kubectl-configs/${PROJECT_NAME}"
+    rm -fr "logs/${PROJECT_NAME}"
+    rm -fr "generated-configs/kubernetes/templates/${PROJECT_NAME}"
+    rm -fr "generated-configs/lxc/bridge/${PROJECT_NAME}"
+    rm -fr "generated-configs/lxc/profiles/${PROJECT_NAME}"
+
+}
+
 destroy() {
 
     #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
@@ -493,6 +504,10 @@ destroy() {
     delete_lxc_images
     delete_lxc_bridges
 
+    if [ $DELETE_GENERATED = true ]; then
+        delete_generated_files
+    fi
+    
     local PROJECTS=()
     get_projects
 
@@ -703,6 +718,9 @@ kubernetes_inicialization() {
 apply_cni_configs() {
 
     local cni_directory="kubernetes/templates/${PROJECT_NAME}/cni"
+    if ! [ -d "${cni_directory}" ]; then
+        cni_directory="kubernetes/templates/default/cni"
+    fi
     mkdir -p "generated-configs/${cni_directory}"
 
     local IFS=$(echo -en "\n\b")
@@ -1144,6 +1162,11 @@ parse_options() {
                 #val="${!OPTIND}"
                 #OPTIND=$(($OPTIND + 1))
                 FORCE=true
+                ;;
+            delete-generated)
+                #val="${!OPTIND}"
+                #OPTIND=$(($OPTIND + 1))
+                DELETE_GENERATED=true
                 ;;
             config)
                 val="${!OPTIND}"
