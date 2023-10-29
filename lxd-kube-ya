@@ -368,8 +368,11 @@ create_lxc_instances() {
     #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
 
     local target=""
-    if ! [ -z ${PROJECT_TARGET} ]; then
-        target="--target=${PROJECT_TARGET}"
+
+
+
+    if ! [ "x${PROJECT_TARGET}" = "x" ] && ! [ "x${PROJECT_TARGET}" = "xnull" ]; then
+        target=" --target=${PROJECT_TARGET}"
     fi
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
@@ -384,7 +387,7 @@ create_lxc_instances() {
         if ! is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
             echo "#### With the image '${INSTANCE_IMAGE}'."
             echo "#### With the profile '${PROFILE_NAME}'."
-            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}" "${target}"
+            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}""${target}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance created"
             else
@@ -899,6 +902,15 @@ provision_kubernetes_cluster() {
 
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
             echo "### Configuring the worker: ${INSTANCE_NAME}"
+            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
+            echo "#### Creating the ${LOG_DIR} directory for logs"
+            mkdir -p "${LOG_DIR}"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
+            else
+                echo "##### [$?] Error creating ddd directory for logs"
+                exit 255
+            fi
             local master_node_joined=
             master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
             local node_exists=$?

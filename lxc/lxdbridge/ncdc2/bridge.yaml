@@ -1,11 +1,11 @@
 config:
   dns.domain: ${K8S_API_ENDPOINT_DOMAIN}
-  ipv4.address: 192.168.4.1/24
+  ipv4.address: 192.168.6.1/24
   ipv4.nat: "true"
   ipv6.dhcp.stateful: "false"
   ipv6.nat: "false"
 description: "Test bridge NAT for k project"
-name: ${PROJECT_NAME}-lxdbr
+name: ${PROJECT_NAME}-br
 type: bridge
 managed: true
 status: Created

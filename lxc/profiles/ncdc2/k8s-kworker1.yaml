@@ -15,13 +15,13 @@ description: LXD profile for Kubernetes
 devices:
   eth0:
     name: eth0
-    hwaddr: 00:16:3e:00:00:03
+    hwaddr: 00:16:3e:01:00:02
     nictype: bridged
-    parent: ${PROJECT_NAME}-lxdbr
+    parent: ${PROJECT_NAME}-br
     type: nic
   root:
     path: /
     pool: default
     type: disk
-name: k8s-kworker2
+name: k8s-kworker1
 used_by: []

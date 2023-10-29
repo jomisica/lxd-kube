@@ -1,0 +1,37 @@
+config:
+  description: This example project works on LXD without being clustered.
+   It is configured with NAT, ideal when we want to test a Kubernetes
+   cluster on a laptop or work PC.
+   If we use this project in an LXD cluster, it will not work because
+   as it is in NAT and the machines are spread across the cluster members,
+   Kubernetes will not be able to communicate between nodes that are in a
+   different LXD member.
+  lxd:
+    projectName: ncdc2
+  kubernetes:
+    clusterName: ncdc2
+    version: 1.22.0
+    podSubnet: 10.12.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+  instances:
+  - instance:
+    lxd:
+      name: ncdc2-kmaster
+      image: ubuntu:22.04
+      profile: k8s-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc2-kworker1
+      image: ubuntu:22.04
+      profile: k8s-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc2-kworker2
+      image: ubuntu:22.04
+      profile: k8s-kworker2
+    kubernetes:
+      type: worker
