@@ -11,7 +11,7 @@ config:
     projectName: ncdc
   kubernetes:
     clusterName: ncdc
-    version: 1.24.0
+    version: 1.22.0
     podSubnet: 10.9.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
   instances:

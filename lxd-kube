@@ -27,6 +27,7 @@ get_lxc_profile_path() {
     fi
     echo "$1"
 }
+
 get_kubernetes_bootstrap_path() {
     if ! [ -f "$1" ]; then
         echo "kubernetes/bootstrap/default/bootstrap.sh"
@@ -40,7 +41,7 @@ get_kubernetes_template_path() {
         echo "$1"
         return 0
     fi
-    echo "kubernetes/templates/default/"$(basename "$1")
+    echo "kubernetes/templates/default/"$(basename $(dirname "$1"))"/"$(basename "$1")
 }
 
 get_projects() {
@@ -764,7 +765,6 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-
             local master_node_joined=
             master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
             local node_exists=$?
@@ -784,8 +784,6 @@ provision_kubernetes_cluster() {
                 echo "##### ABORT: The container is not active and/or has not the network configured"
                 exit 255
             fi
-
-
 
             K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
 
