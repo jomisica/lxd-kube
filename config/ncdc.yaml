@@ -1,8 +1,8 @@
 config:
   description: This example project works on clustered LXD. However, the
     bridge must be configured in Linux first. In this specific case I use the
-    lxdbrige bridge that is created in the system and configured. And use the
-    default project profile, which by default uses this bridge for the network.
+    lxdbrige bridge that is created in the system and configured. And use the 
+    project profile, which by default uses this bridge for the network.
     This is the most production mode, as it allows the network infrastructure
     to be configured in the systems with certain needs for each project.
     And use this bridge for LXD containers, as well as each kubernetes node

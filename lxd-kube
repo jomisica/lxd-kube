@@ -2,22 +2,20 @@
 
 if [ "$EUID" -eq 0 ]; then
     echo "Please do not run as root"
-    echo "Example: bash install-lxd.sh"
+    echo "Example: bash lxd-kube"
     exit
 fi
-
-if ! command -v ya &> /dev/null; then
-    echo "ya could not be found"
+if ! command -v yq &>/dev/null; then
+    echo "yq could not be found"
     exit 1
 fi
 
-
-LXD_DONE=false
-CONFIG_FILE=default.csv
+FORCE=false
+CONFIG_FILE=
 
 usage() {
     echo
-    echo "Usage: lxd-kube [provision|destroyinstances|destroyprojects|verifyconfig|stop|start|pause|restart] --config file.csv"
+    echo "Usage: lxd-kube [provision|destroy|stop|start|pause|restart] --config file.csv"
     echo
     exit 1
 }
@@ -89,7 +87,8 @@ get_images() {
     done < <(lxc image list --project "$1" --format csv 2>/dev/null)
 }
 get_bridge() {
-    lxc network list --project "$1" --format csv | grep "$2" 2>/dev/null
+    local ret
+    ret=$(lxc network list --format csv 2>/dev/null | grep "$1" 2>/dev/null)
     if [ $? -eq 0 ]; then
         return 0
     else
@@ -104,6 +103,15 @@ is_cluster() {
     else
         return 1
     fi
+}
+
+get_cluster_member() {
+    local fields
+    local IFS=,
+    while read -a fields; do
+        local MEMBERS=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
+        CLUSSTER_MEMBERS+=("$MEMBERS")
+    done < <(lxc cluster list --format csv 2>/dev/null)
 }
 
 is_up() {
@@ -159,12 +167,17 @@ is_in_array() {
 }
 
 lxc_stop_containers() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
-        echo "### Stopping container '${values[2]}' in project '${values[0]}'."
-        if [ $(get_container_stat "${values[0]}" "${values[2]}") != "STOPPED" ]; then
-            lxc --project "${values[0]}" stop "${values[2]}"
+    echo -e "\n## Stopping project instances...\n"
+
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+
+        echo "### Stopping container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
+        if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") != "STOPPED" ]; then
+            lxc --project "${PROJECT_NAME}" stop "${INSTANCE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container stopped"
             else
@@ -178,13 +191,18 @@ lxc_stop_containers() {
 }
 
 lxc_start_containers() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
-        echo "### Starting the container '${values[2]}' in project '${values[0]}'."
-        local stat=$(get_container_stat "${values[0]}" "${values[2]}")
+    echo -e "\n## Starting project instances...\n"
+
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+
+        echo "### Starting the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
+        local stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
         if [ ${stat} = "STOPPED" ] || [ ${stat} = "FROZEN" ]; then
-            lxc --project "${values[0]}" start "${values[2]}"
+            lxc --project "${PROJECT_NAME}" start "${INSTANCE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container started"
             else
@@ -198,12 +216,17 @@ lxc_start_containers() {
 }
 
 lxc_pause_containers() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
-        echo "### Pausing the container '${values[2]}' in project '${values[0]}'."
-        if [ $(get_container_stat "${values[0]}" "${values[2]}") = "RUNNING" ]; then
-            lxc --project "${values[0]}" pause "${values[2]}"
+    echo -e "\n## Pausing project instances...\n"
+
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+
+        echo "### Pausing the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
+        if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") = "RUNNING" ]; then
+            lxc --project "${PROJECT_NAME}" pause "${INSTANCE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container paused"
             else
@@ -217,79 +240,104 @@ lxc_pause_containers() {
 }
 
 create_lxc_projects() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
 
-        local PROJECTS=()
-        get_projects
-
-        echo "### Creating the '${values[0]}' project in LXC."
-        if ! is_in_array "${values[0]}" "${PROJECTS[@]}"; then
-            PROJECTS+=("${values[0]}")
-            lxc project create "${values[0]}"
-            if [ $? -eq 0 ]; then
-                echo "#### [OK] Project created"
-            else
-                echo "#### [$?] Error creating project"
-                exit $?
-            fi
+    local PROJECTS=()
+    get_projects
+    local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    echo "### Creating the '${PROJECT_NAME}' project in LXC."
+    if ! is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
+        lxc project create "${PROJECT_NAME}"
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Project created"
         else
-            echo "#### [OK] Project exists"
+            echo "#### [$?] Error creating project"
+            exit $?
         fi
-    done
+    else
+        echo "#### [OK] Project exists"
+    fi
+    echo
 }
 
 create_lxc_bridges() {
-    if ! is_cluster; then
-        local IFS=","
-        for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-            read -a values <<<"${DEPLOY_LIST[$i]}"
+    #if ! is_cluster; then
 
-            if [[ "${values[4]}" == "master" ]]; then
-                echo "### Creating bridge "${values[0]}"-lxdbr in the '${values[0]}' project."
-                if ! get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
-                    lxc --project "${values[0]}" network create "${values[0]}"-lxdbr --target terra --target lxdn1
-                    if [ $? -eq 0 ]; then
-                        echo "#### [OK] Bridge created"
-                    else
-                        echo "#### [$?] Error creating bridge"
-                        exit $?
-                    fi
-                else
-                    echo "#### [OK] Bridge exists"
-                fi
+    #local PROJECT_NAME=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+    #local K8S_API_ENDPOINT=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "config/${CONFIG_FILE}")
 
-                export K8S_API_ENDPOINT_DOMAIN="${values[5]}"
-                export LXD_PROJECT="${values[0]}"
+    #lxc --project ncdc network create ncdc-lxdbr --target=terra
+    #lxc --project ncdc network create ncdc-lxdbr --target=lxdn1
+    #lxc --project ncdc network create ncdc-lxdbr
+    #lxc --project ncdc network edit ncdc-lxdbr
+    #lxc --project ncdc network edit ncdc-lxdbr < generated-configs/lxc/bridge/ncdc/bridge.yaml
+    #lxc --project ncdc network show ncdc-lxdbr
+    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+        return
+    fi
 
-                mkdir -p lxc/generated-configs/bridge/"${values[0]}"
-                $(envsubst <"lxc/lxdbridge/"${values[0]}"/bridge.yaml" >lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
-                lxc --project "${values[0]}" network edit "${values[0]}"-lxdbr < <(cat lxc/generated-configs/bridge/"${values[0]}"/bridge.yaml)
+    echo "### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME}..."
+    if ! get_bridge "${PROJECT_NAME}"-br; then
 
+        if is_cluster; then
+            CLUSSTER_MEMBERS=()
+            get_cluster_member
+
+            for ((o = 0; o < ${#CLUSSTER_MEMBERS[@]}; o++)); do
+                echo "#### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
+                lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br --target="${CLUSSTER_MEMBERS[$o]}"
                 if [ $? -eq 0 ]; then
-                    echo "#### [OK] Bridge edited"
+                    echo "##### [OK] The bridge was created on member ${CLUSSTER_MEMBERS[$o]}."
                 else
-                    echo "#### [$?] Error Bridge edite"
+                    echo "##### [$?] Error creating the bridge on member ${CLUSSTER_MEMBERS[$o]}."
                     exit $?
                 fi
-            fi
-        done
+            done
+        fi
+
+        lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Bridge created"
+        else
+            echo "#### [$?] Error creating bridge"
+            exit $?
+        fi
+    else
+        echo "#### [OK] Bridge exists"
     fi
+
+    #K8S_API_ENDPOINT_DOMAIN="${K8S_API_ENDPOINT}"
+    #LXD_PROJECT="${PROJECT_NAME}"
+
+    mkdir -p generated-configs/lxc/bridge/"${PROJECT_NAME}"
+    #$(envsubst <"lxc/lxdbridge/"${PROJECT_NAME}"/bridge.yaml" >generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
+    evolve_templates "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml"
+    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-br < <(cat generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
+
+    if [ $? -eq 0 ]; then
+        echo "#### [OK] Bridge edited"
+    else
+        echo "#### [$?] Error Bridge edite"
+        exit $?
+    fi
+    echo
+    #fi
 }
 
 create_lxc_profiles() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
 
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
 
         local PROFILES=()
-        get_profiles "${values[0]}"
+        get_profiles "${PROJECT_NAME}"
 
-        echo "### Creating the '${values[1]}' profile in the '${values[0]}' LXC project."
-        if ! is_in_array "${values[1]}" "${PROFILES[@]}"; then
-            lxc --project "${values[0]}" profile create "${values[1]}"
+        echo "### Creating the '${PROFILE_NAME}' profile in the '${PROJECT_NAME}' LXC project."
+        if ! is_in_array "${PROFILE_NAME}" "${PROFILES[@]}"; then
+            lxc --project "${PROJECT_NAME}" profile create "${PROFILE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Profile created"
             else
@@ -300,14 +348,14 @@ create_lxc_profiles() {
             echo "#### [OK] Profile exists"
         fi
 
-        echo "### Applying the settings in the '${values[1]}' profile in the '${values[0]}' LXC project."
-        export LXD_PROJECT="${values[0]}"
+        echo "### Applying the settings in the '${PROFILE_NAME}' profile in the '${PROJECT_NAME}' LXC project."
+        #export LXD_PROJECT="${PROJECT_NAME}"
 
-        mkdir -p lxc/generated-configs/profiles/"${values[0]}"
-        $(envsubst <$(get_lxc_profile_path lxc/profiles/"${values[0]}"/"${values[1]}".yaml) >lxc/generated-configs/profiles/"${values[0]}"/"${values[1]}".yaml)
+        mkdir -p generated-configs/lxc/profiles/"${PROJECT_NAME}"
+        #$(envsubst <$(get_lxc_profile_path lxc/profiles/"${PROJECT_NAME}"/"${PROFILE_NAME}".yaml) >generated-configs/lxc/profiles/"${PROJECT_NAME}"/"${PROFILE_NAME}".yaml)
+        evolve_templates $(get_lxc_profile_path "lxc/profiles/${PROJECT_NAME}/${PROFILE_NAME}.yaml") "generated-configs/lxc/profiles/${PROJECT_NAME}/${PROFILE_NAME}.yaml"
 
-        #echo $(get_lxc_profile_path "lxc/profiles/"${values[0]}"/"${values[1]}".yaml")
-        lxc --project "${values[0]}" profile edit "${values[1]}" < <(cat lxc/generated-configs/profiles/"${values[0]}"/"${values[1]}".yaml)
+        lxc --project "${PROJECT_NAME}" profile edit "${PROFILE_NAME}" < <(cat generated-configs/lxc/profiles/"${PROJECT_NAME}"/"${PROFILE_NAME}".yaml)
         if [ $? -eq 0 ]; then
             echo "#### [OK] Settings applied"
         else
@@ -315,24 +363,32 @@ create_lxc_profiles() {
             exit $?
         fi
     done
+    echo
 }
 
 create_lxc_instances() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
 
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    local target=""
+
+    if ! [ -z "${PROJECT_TARGET}" ]; then
+        target=" --target=${PROJECT_TARGET}"
+    fi
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
 
         CONTAINERS=()
-        get_containers "${values[0]}"
+        get_containers "${PROJECT_NAME}"
 
-        echo ${CONTAINERS[@]}
-
-        echo "### Creating the '${values[2]}' container in the '${values[0]}' LXC project."
-        if ! is_in_array "${values[2]}" "${CONTAINERS[@]}"; then
-            echo "#### With the image '${values[3]}'."
-            echo "#### With the profile '${values[1]}'."
-            lxc --project "${values[0]}" launch "${values[3]}" "${values[2]}" --profile "${values[1]}"
+        echo "### Creating the '${INSTANCE_NAME}' container in the '${PROJECT_NAME}' LXC project."
+        if ! is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
+            echo "#### With the image '${INSTANCE_IMAGE}'."
+            echo "#### With the profile '${PROFILE_NAME}'."
+            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}""${target}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance created"
             else
@@ -343,159 +399,362 @@ create_lxc_instances() {
             echo "#### [OK] Instance exists"
         fi
     done
+    echo
 }
 
 delete_lxc_images() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
 
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    echo "### Deleting images associated with the project"
 
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local IMAGES=()
-        get_images "${values[0]}"
-        #echo "${values[0]}"
+        get_images "${PROJECT_NAME}"
 
         for ((o = 0; o < ${#IMAGES[@]}; o++)); do
-
-            echo "### Deleting image '${IMAGES[$o]}' in project '${values[0]}' LXC."
+            echo "#### Deleting image '${IMAGES[$o]}' in project '${PROJECT_NAME}' LXC."
             if is_in_array "${IMAGES[$o]}" "${IMAGES[@]}"; then
-                lxc --project "${values[0]}" image delete "${IMAGES[$o]}"
+                lxc --project "${PROJECT_NAME}" image delete "${IMAGES[$o]}"
                 if [ $? -eq 0 ]; then
-                    echo "#### [OK] Image deleted"
+                    echo "##### [OK] Image deleted"
                 else
-                    echo "#### [$?] Error deleting image"
-                    exit $?
+                    echo "##### [$?] Error deleting image"
+                    $FORCE || exit $?
                 fi
             else
-                echo "#### [OK] Image do not exist"
+                echo "##### [OK] Image do not exist"
             fi
         done
     done
+    echo
 }
 
 delete_lxc_bridges() {
-    if ! is_cluster; then
-        local IFS=","
-        for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-            read -a values <<<"${DEPLOY_LIST[$i]}"
-
-            if [[ "${values[4]}" == "master" ]]; then
-                echo "### Deleting bridge "${values[0]}"-lxdbr in project '${values[0]}'."
-                if get_bridge "${values[0]}" "${values[0]}"-lxdbr; then
-                    lxc --project "${values[0]}" network delete "${values[0]}"-lxdbr
-                    if [ $? -eq 0 ]; then
-                        echo "#### [OK] Bridge deleted"
-                    else
-                        echo "#### [$?] Error deleting the bridge"
-                        exit $?
-                    fi
-                else
-                    echo "#### [OK] Bridge do not exists"
-                fi
-            fi
-        done
+    #if ! is_cluster; then
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+        return
     fi
+    echo "### Deleting bridge "${PROJECT_NAME}"-br in project '${PROJECT_NAME}'."
+    if get_bridge "${PROJECT_NAME}"-br; then
+        lxc network delete "${PROJECT_NAME}"-br
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Bridge deleted"
+        else
+            echo "#### [$?] Error deleting the bridge"
+            $FORCE || exit $?
+        fi
+    else
+        echo "#### [OK] Bridge do not exists"
+    fi
+    echo
+    # fi
 }
 
 delete_lxc_profiles() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
 
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
 
         local PROFILES=()
-        get_profiles "${values[0]}"
+        get_profiles "${PROJECT_NAME}"
 
-        echo "### Deleting profile '${values[1]}' in project '${values[0]}' LXC."
-        if is_in_array "${values[1]}" "${PROFILES[@]}"; then
-            lxc --project "${values[0]}" profile delete "${values[1]}"
+        echo "### Deleting profile '${PROFILE_NAME}' in project '${PROJECT_NAME}' LXC."
+        if is_in_array "${PROFILE_NAME}" "${PROFILES[@]}"; then
+            lxc --project "${PROJECT_NAME}" profile delete "${PROFILE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Profile deleted"
             else
                 echo "#### [$?] Error deleting profile"
-                exit $?
+                $FORCE || exit $?
             fi
         else
             echo "#### [OK] Profile does not exist"
         fi
     done
+    echo
 }
 
-destroyprojects() {
+destroy() {
+
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    echo -e "\n# Destroying LXD's '${PROJECT_NAME}' project...\n"
 
     destroyinstances
-    echo
     delete_lxc_profiles
-    echo
     delete_lxc_images
-    echo
     delete_lxc_bridges
-    echo
 
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    local PROJECTS=()
+    get_projects
 
-        local PROJECTS=()
-        get_projects
-
-        echo "### Deleting the '${values[0]}' project in LXC."
-        if is_in_array "${values[0]}" "${PROJECTS[@]}"; then
-            PROJECTS+=("${values[0]}")
-            lxc project delete "${values[0]}"
-            if [ $? -eq 0 ]; then
-                echo "#### [OK] Project deleted"
-            else
-                echo "#### [$?] Error deleting project"
-                exit $?
-            fi
+    echo "### Deleting the '${PROJECT_NAME}' project in LXC."
+    if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
+        PROJECTS+=("${PROJECT_NAME}")
+        lxc project delete "${PROJECT_NAME}"
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Project deleted"
         else
-            echo "#### [OK] Project do not exists"
+            echo "#### [$?] Error deleting project"
+            $FORCE || exit $?
         fi
-    done
-
+    else
+        echo "#### [OK] Project do not exists"
+    fi
+    echo -e "\n# END Destroying LXD's '${PROJECT_NAME}' project...\n"
 }
 
 destroyinstances() {
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
 
         CONTAINERS=()
-        get_containers "${values[0]}"
+        get_containers "${PROJECT_NAME}"
 
-        echo "### Destroying the '${values[2]}' container in the '${values[0]}' LXC project."
-        if is_in_array "${values[2]}" "${CONTAINERS[@]}"; then
-            lxc --project "${values[0]}" delete --force "${values[2]}"
+        echo "### Destroying the '${INSTANCE_NAME}' container in the '${PROJECT_NAME}' LXC project."
+        if is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
+            lxc --project "${PROJECT_NAME}" delete --force "${INSTANCE_NAME}"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance deleted"
             else
                 echo "#### [$?] Error deleting instance"
-                exit $?
+                $FORCE || exit $?
             fi
         else
             echo "#### [OK] Instance do not exists"
         fi
     done
+    echo
+}
+
+build_bootstrap_payload_content() {
+
+    cat <<EOF
+export PROJECT_NAME=${PROJECT_NAME};
+export INSTANCES_LENGTH=${INSTANCES_LENGTH};
+export K8S_VERSION=${K8S_VERSION};
+export K8S_API_ENDPOINT_DOMAIN=${K8S_API_ENDPOINT_DOMAIN};
+export K8S_CLUSTER_NAME=${K8S_CLUSTER_NAME};
+export K8S_POD_SUBNET=${K8S_POD_SUBNET};
+export PROJECT_PROFILES_NAME=${PROJECT_PROFILES_NAME};
+export PROJECT_INSTANCES_NAME=${PROJECT_INSTANCES_NAME};
+export PROJECT_INSTANCES_IMAGES=${PROJECT_INSTANCES_IMAGES};
+export PROJECT_INSTANCES_TYPE=${PROJECT_INSTANCES_TYPE};
+export CURRENT_INSTANCE_NAME=${CURRENT_INSTANCE_NAME};
+export CURRENT_INSTANCE_TYPE=${CURRENT_INSTANCE_TYPE};
+export CURRENT_PROFILE_NAME=${CURRENT_PROFILE_NAME};
+export CURRENT_INSTANCE_IMAGE=${CURRENT_INSTANCE_IMAGE};
+export CURRENT_INSTANCE_INDEX=${CURRENT_INSTANCE_INDEX};
+export CURRENT_INSTANCE_IP=${INSTANCE_IP};
+EOF
+
+    cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh")
+}
+
+evolve_templates() {
+    #export ESCUDO='$'
+    #     envsubst '${ESCUDO}
+    # ${PROJECT_NAME}
+    # ${INSTANCES_LENGTH}
+    # ${K8S_VERSION}
+    # ${K8S_API_ENDPOINT_DOMAIN}
+    # ${K8S_CLUSTER_NAME}
+    # ${K8S_POD_SUBNET}
+    # ${PROJECT_PROFILES_NAME}
+    # ${PROJECT_INSTANCES_NAME}
+    # ${PROJECT_INSTANCES_IMAGES}
+    # ${PROJECT_INSTANCES_TYPE}
+    # ${CURRENT_INSTANCE_NAME}
+    # ${CURRENT_INSTANCE_TYPE}
+    # ${CURRENT_PROFILE_NAME}
+    # ${CURRENT_INSTANCE_IMAGE}
+    # ${CURRENT_INSTANCE_INDEX}
+    # ${INSTANCE_IP}
+    #' <"$1" >"$2"
+
+    sed \
+        -e "s?\${CA_CERT_HASH}?${CA_CERT_HASH}?" \
+        -e "s?\${CA_DATA_B64}?${CA_DATA_B64}?" \
+        -e "s?\${CLIENT_CERT_B64}?${CLIENT_CERT_B64}?" \
+        -e "s?\${CLIENT_KEY_B64}?${CLIENT_KEY_B64}?" \
+        -e "s?\${KUBEADM_TOKEN}?${KUBEADM_TOKEN}?" \
+        -e "s?\${K8S_POD_SUBNET}?${K8S_POD_SUBNET}?" \
+        -e "s/\${PROJECT_NAME}/${PROJECT_NAME}/" \
+        -e "s?\${INSTANCES_LENGTH}?${INSTANCES_LENGTH}?" \
+        -e "s/\${K8S_VERSION}/${K8S_VERSION}/" \
+        -e "s/\${K8S_API_ENDPOINT}/${K8S_API_ENDPOINT}/" \
+        -e "s/\${K8S_API_ENDPOINT_DOMAIN}/${K8S_API_ENDPOINT_DOMAIN}/" \
+        -e "s/\${K8S_CLUSTER_NAME}/${K8S_CLUSTER_NAME}/" \
+        -e "s/\${PROJECT_PROFILES_NAME}/${PROJECT_PROFILES_NAME}/" \
+        -e "s/\${PROJECT_INSTANCES_NAME}/${PROJECT_INSTANCES_NAME}/" \
+        -e "s/\${PROJECT_INSTANCES_IMAGES}/${PROJECT_INSTANCES_IMAGES}/" \
+        -e "s/\${PROJECT_INSTANCES_TYPE}/${PROJECT_INSTANCES_TYPE}/" \
+        -e "s/\${CURRENT_INSTANCE_NAME}/${CURRENT_INSTANCE_NAME}/" \
+        -e "s/\${CURRENT_INSTANCE_TYPE}/${CURRENT_INSTANCE_TYPE}/" \
+        -e "s/\${CURRENT_PROFILE_NAME}/${CURRENT_PROFILE_NAME}/" \
+        -e "s/\${CURRENT_INSTANCE_IMAGE}/${CURRENT_INSTANCE_IMAGE}/" \
+        -e "s/\${CURRENT_INSTANCE_INDEX}/${CURRENT_INSTANCE_INDEX}/" \
+        -e "s/\${INSTANCE_IP}/${INSTANCE_IP}/" "$1" >"$2"
+
+    return $?
+
+}
+
+generate_kubernetes_token() {
+    echo $(printf '%s' $(echo "$RANDOM" | md5sum) | cut -c 1-6).$(printf '%s' $(echo "$RANDOM" | md5sum) | cut -c 1-16)
+}
+
+kubernetes_inicialization() {
+
+    local init_directory="kubernetes/templates/${PROJECT_NAME}/init"
+    local generated_init_directory="generated-configs/${init_directory}"
+    mkdir -p "${generated_init_directory}"
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${init_directory}" -type f 2>/dev/null)
+    local templates_num=$(find "${init_directory}" -type f 2>/dev/null | wc -l)
+    # echo $templates_num
+
+    # if [ ${templates_num} -lt 1 ]; then
+    #     return 0
+    # fi
+
+    echo "#### Initializing the master plane..."
+
+    echo "##### Generating a token in Kubernetes"
+    #export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash) >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+    KUBEADM_TOKEN=$(generate_kubernetes_token)
+
+    kadminittemplate=$(get_kubernetes_template_path "${init_directory}/kubeadm-init-config.yaml")
+    echo "##### Processing the ${kadminittemplate} template"
+    #$(envsubst <"${kadminittemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml) >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+    evolve_templates "${kadminittemplate}" "${generated_init_directory}/kubeadm-init-config.yaml"
+    if [ $? -eq 0 ]; then
+        echo "###### [OK] The "${kadminittemplate}" template was processed successfully"
+    else
+        echo "###### [$?] Error processing "${kadminittemplate}" template"
+        exit 255
+    fi
+
+    echo "##### Copying the '${generated_init_directory}/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+    lxc --project "${PROJECT_NAME}" file push -p ${generated_init_directory}/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0
+    if [ $? -eq 0 ]; then
+        echo "###### [OK] The '${generated_init_directory}/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
+    else
+        echo "###### [$?] Error when copying '${generated_init_directory}/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+        exit 255
+    fi
+
+    echo "##### Download the Kubernetes base images"
+    echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+    if [ $? -eq 0 ]; then
+        echo "###### [OK] The images were downloaded successfully"
+    else
+        echo "###### [$?] Error when downloading images"
+        exit 255
+    fi
+
+    echo "##### Initializing the master plane"
+    lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+    if [ $? -eq 0 ]; then
+        echo "###### [OK] The master plane has been successfully initialized"
+    else
+        echo "###### [$?] Error initializing the master plane"
+        exit 255
+    fi
+
+    echo "mkdir -p /root/.kube; cp /etc/kubernetes/admin.conf /root/.kube/config; chown $(id -u):$(id -g) /root/.kube/config" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash
+
+    CA_CERT_HASH=$(echo "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* /sha256:/'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+    CA_DATA_B64=$(echo "cat /etc/kubernetes/pki/ca.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+    CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+    CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+
+    kubeconfigtemplate=$(get_kubernetes_template_path "kubernetes/templates/${PROJECT_NAME}/kubeconfig/kubeadm-config.yaml")
+    echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
+    echo "#### Creating kubernetes/kubectl-configs/${PROJECT_NAME}/kubeconfig to access the master plane"
+    evolve_templates "${kubeconfigtemplate}" "${KUBECTL_CONFIGS_DIR}/kubeconfig"
+
+    kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-join-config.yaml")
+    echo "#### Processing the ${kadmjointemplate} template to join workers"
+    #$(envsubst <"${kadmjointemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml) 2>>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log
+    evolve_templates "${kadmjointemplate}" "${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml"
+    if [ $? -eq 0 ]; then
+        echo "##### [OK] The ${kadmjointemplate} template was processed successfully"
+    else
+        echo "##### [$?] Error processing ${kadmjointemplate} template"
+        exit 255
+    fi
+}
+
+apply_cni_configs() {
+
+    local cni_directory="kubernetes/templates/${PROJECT_NAME}/cni"
+    mkdir -p "generated-configs/${cni_directory}"
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${cni_directory}" -type f 2>/dev/null)
+    local templates_num=$(find "${cni_directory}" -type f 2>/dev/null | wc -l)
+    #echo $templates_num
+
+    if [ ${templates_num} -lt 1 ]; then
+        return 0
+    fi
+    echo "#### Applying CNI templates to Kubernetes..."
+
+    for TEMPLATE in ${templates}; do
+        local file_name=$(basename ${TEMPLATE})
+        # echo "source '$TEMPLATE'"
+        # echo "dest 'generated-configs/$TEMPLATE'"
+
+        echo "##### Processing the ${file_name} template"
+        evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
+
+        echo "##### Applying the ${file_name} template to Kubernetes."
+        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+    done
 }
 
 provision_kubernetes_cluster() {
 
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+    #local K8S_VERSION=$(yq e ".config.kubernetes.version" "config/${CONFIG_FILE}")
+    #local K8S_API_ENDPOINT=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "config/${CONFIG_FILE}")
+    #local K8S_CLUSTER_NAME=$(yq e '.config.kubernetes.clusterName' "config/${CONFIG_FILE}")
+    #local K8S_POD_SUBNET=$(yq e '.config.kubernetes.podSubnet' "config/${CONFIG_FILE}")
 
-        if [[ "${values[4]}" == "master" ]]; then
-            echo "### Configuring the master plane: ${values[2]}"
-            echo "#### Wait a maximum of 360s until the container has a network, so we can proceed."
-            if is_up 360 "${values[0]}" "${values[2]}"; then
-                echo "##### The container is active and has the network configured"
-            else
-                echo "##### ABORT: The container is not active and/or has not the network configured"
-                exit 255
-            fi
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "config/${CONFIG_FILE}")
 
-            LOG_DIR=kubernetes/logs/"${values[0]}"/"${values[2]}"
+        CURRENT_INSTANCE_NAME=${INSTANCE_NAME}
+        CURRENT_INSTANCE_TYPE=${INSTANCE_TYPE}
+        CURRENT_INSTANCE_INDEX=${i}
+        CURRENT_PROFILE_NAME=${PROFILE_NAME}
+        CURRENT_INSTANCE_IMAGE=${INSTANCE_IMAGE}
+        INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        #apply_cni_configs
+        #exit
+        if [[ "${INSTANCE_TYPE}" == "master" ]]; then
+            K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
+            echo "### Configuring the master plane: ${INSTANCE_NAME}"
+
+            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
             echo "#### Creating the ${LOG_DIR} directory for logs"
             mkdir -p "${LOG_DIR}"
             if [ $? -eq 0 ]; then
@@ -505,21 +764,41 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            export K8S_API_ENDPOINT=${values[2]}.${values[5]}
-            export K8S_CLUSTER_NAME=${values[6]}
-            export K8S_POD_SUBNET=${values[7]}
-            export K8S_VERSION=${values[8]}
 
-            echo "#### Resolving the master plane domain:" ${K8S_API_ENDPOINT}
-            echo "nslookup '${K8S_API_ENDPOINT}' | grep 'Address:' | grep '$(get_instance_ip "${values[0]}" "${values[2]}")'" | lxc --project "${values[0]}" exec "${values[2]}" bash >kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
-            if [ $? -eq 0 ]; then
-                echo "##### It is possible to resolve the domain to the machine's IP:" $(get_instance_ip "${values[0]}" "${values[2]}")
+            local master_node_joined=
+            master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
+            local node_exists=$?
+            local worker_stat=
+            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
+                echo "#### [OK] The master plane has already successfully initialized"
+                echo "### END Configuring the master plane: ${INSTANCE_NAME}"
+                echo
+                continue
+            fi
+
+            echo "#### Wait a maximum of 360s until the container has a network, so we can proceed."
+            if is_up 360 "${PROJECT_NAME}" "${INSTANCE_NAME}"; then
+                echo "##### The container is active and has the network configured"
             else
-                echo "##### Unable to resolve the domain to the machine's IP: " $(get_instance_ip "${values[0]}" "${values[2]}")
+                echo "##### ABORT: The container is not active and/or has not the network configured"
                 exit 255
             fi
 
-            KUBECTL_CONFIGS_DIR=kubernetes/kubectl-configs/"${values[0]}"/"${values[2]}"
+
+
+            K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+
+            echo "#### Resolving the master plane domain:" ${K8S_API_ENDPOINT}
+            echo "nslookup '${K8S_API_ENDPOINT}' | grep 'Address:' | grep '${INSTANCE_IP}'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            if [ $? -eq 0 ]; then
+                echo "##### It is possible to resolve the domain to the machine's IP:" ${INSTANCE_IP}
+            else
+                echo "##### Unable to resolve the domain to the machine's IP: " ${INSTANCE_IP}
+                exit 255
+            fi
+
+            KUBECTL_CONFIGS_DIR="kubernetes/kubectl-configs/${PROJECT_NAME}"
             echo "#### Creating the ${KUBECTL_CONFIGS_DIR} directory for the kubectl config files"
             mkdir -p "${KUBECTL_CONFIGS_DIR}"
             if [ $? -eq 0 ]; then
@@ -529,7 +808,7 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            GENERATED_CONFIGS_DIR=kubernetes/generated-configs/"${values[0]}"/"${values[2]}"
+            GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}"
             echo "#### Creating the ${GENERATED_CONFIGS_DIR} directory for the generated config files to kubernetes"
             mkdir -p "${GENERATED_CONFIGS_DIR}"
             if [ $? -eq 0 ]; then
@@ -539,10 +818,11 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            TEMPLATE_DIR=kubernetes/templates/"${values[0]}"
+            TEMPLATE_DIR=kubernetes/templates/"${PROJECT_NAME}"
 
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
-            echo "export K8S_VERSION=${values[8]}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${values[0]}"/"${values[2]}"/bootstrap.sh"))" | lxc --project "${values[0]}" exec "${values[2]}" -- bash >>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
+            #echo "export K8S_VERSION=${K8S_VERSION}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh"))" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The required software has been installed"
             else
@@ -550,12 +830,18 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Generating a token in Kubernetes"
-            export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${values[0]}" exec "${values[2]}" -- bash) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
+            #exit
+            #kubernetes_inicialization
 
-            kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-init-config.yaml")
+            echo "#### Generating a token in Kubernetes"
+            #export KUBEADM_TOKEN=$(echo "kubeadm token generate" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash) >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            KUBEADM_TOKEN=$(generate_kubernetes_token)
+
+            kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/init/kubeadm-init-config.yaml")
             echo "#### Processing the ${kadminittemplate} template"
-            $(envsubst <"${kadminittemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
+            #$(envsubst <"${kadminittemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml) >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            mkdir -p "${GENERATED_CONFIGS_DIR}/init/"
+            evolve_templates "${kadminittemplate}" "${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The "${kadminittemplate}" template was processed successfully"
             else
@@ -563,17 +849,17 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml' configuration file to ${values[2]}"
-            lxc --project "${values[0]}" file push -p ${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml ${values[2]}/root/kubeadm-init-config.yaml --uid 0
+            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+            lxc --project "${PROJECT_NAME}" file push -p ${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0
             if [ $? -eq 0 ]; then
-                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml' configuration file has been successfully copied to ${values[2]}"
+                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
-                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/kubeadm-init-config.yaml' configuration file to ${values[2]}"
+                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
                 exit 255
             fi
 
             echo "#### Download the Kubernetes base images"
-            echo "kubeadm config images pull --kubernetes-version v${values[8]}" | lxc --project "${values[0]}" exec "${values[2]}" -- bash >>kubernetes/logs/"${values[0]}"/"${values[2]}"/kubeadminit.log 2>&1
+            echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The images were downloaded successfully"
             else
@@ -582,7 +868,7 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Initializing the master plane"
-            lxc --project "${values[0]}" exec "${values[2]}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>kubernetes/logs/"${values[0]}"/"${values[2]}"/kubeadminit.log 2>&1
+            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The master plane has been successfully initialized"
             else
@@ -590,60 +876,69 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "mkdir -p /root/.kube; cp /etc/kubernetes/admin.conf /root/.kube/config; chown $(id -u):$(id -g) /root/.kube/config" | lxc --project "${values[0]}" exec "${values[2]}" -- bash
+            echo "mkdir -p /root/.kube; cp /etc/kubernetes/admin.conf /root/.kube/config; chown $(id -u):$(id -g) /root/.kube/config" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash
 
-            kadmflanneltemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-flannel.yaml")
-            echo "#### Processing the ${kadmflanneltemplate} template"
-            $(envsubst <"${kadmflanneltemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-flannel.yaml) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${kadmflanneltemplate} template was processed successfully"
-            else
-                echo "##### [$?] Error processing ${kadmflanneltemplate} template"
-                exit 255
-            fi
+            CA_CERT_HASH=$(echo "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* /sha256:/'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+            CA_DATA_B64=$(echo "cat /etc/kubernetes/pki/ca.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+            CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+            CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
 
-            echo "#### Applying Flannel to Kubernetes Networking"
-            cat ${GENERATED_CONFIGS_DIR}/kubeadm-flannel.yaml | lxc --project "${values[0]}" exec "${values[2]}" -- kubectl apply -f - >>kubernetes/logs/"${values[0]}"/"${values[2]}"/kubeadminit.log 2>&1
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] Flannel was successfully applied to the Kubernetes network"
-            else
-                echo "##### [$?] Error applying flannel to Kubernetes network"
-                exit 255
-            fi
-
-            export CA_CERT_HASH=$(echo "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* /sha256:/'" | lxc --project "${values[0]}" exec "${values[2]}" -- bash)
-            export CA_DATA_B64=$(echo "cat /etc/kubernetes/pki/ca.crt | base64 -w0" | lxc --project "${values[0]}" exec "${values[2]}" -- bash)
-            export CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${values[0]}" exec "${values[2]}" -- bash)
-            export CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${values[0]}" exec "${values[2]}" -- bash)
             kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-config.yaml")
             echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
             echo "#### Creating "${KUBECTL_CONFIGS_DIR}"/kubeconfig to access the master plane"
-            envsubst <"${kubeconfigtemplate}" >"${KUBECTL_CONFIGS_DIR}"/kubeconfig
+            #envsubst <"${kubeconfigtemplate}" >"${KUBECTL_CONFIGS_DIR}"/kubeconfig
+            evolve_templates "${kubeconfigtemplate}" "${KUBECTL_CONFIGS_DIR}/kubeconfig"
 
-            kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-join-config.yaml")
+            mkdir -p "${GENERATED_CONFIGS_DIR}/join/"
+            kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-config.yaml")
             echo "#### Processing the ${kadmjointemplate} template to join workers"
-            $(envsubst <"${kadmjointemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml) 2>>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log
+            #$(envsubst <"${kadmjointemplate}" >${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml) 2>>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log
+            evolve_templates "${kadmjointemplate}" "${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The ${kadmjointemplate} template was processed successfully"
             else
                 echo "##### [$?] Error processing ${kadmjointemplate} template"
                 exit 255
             fi
-            echo "### END Configuring the master plane: ${values[2]}"
+
+            apply_cni_configs
+
+            echo "### END Configuring the master plane: ${INSTANCE_NAME}"
             echo
         fi
 
-        if [[ "${values[4]}" == "worker" ]]; then
-            echo "### Configuring the worker: ${values[2]}"
+        if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
+            echo "### Configuring the worker: ${INSTANCE_NAME}"
+            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
+            echo "#### Creating the ${LOG_DIR} directory for logs"
+            mkdir -p "${LOG_DIR}"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
+            else
+                echo "##### [$?] Error creating ddd directory for logs"
+                exit 255
+            fi
+            local master_node_joined=
+            master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
+            local node_exists=$?
+            local worker_stat=
+            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
+                echo "#### [OK] The worker has already successfully joinedy"
+                echo "### END Configuring the worker: ${INSTANCE_NAME}"
+                echo
+                continue
+            fi
+
             echo "#### Wait a maximum of 360s until the container has a network, so we can proceed."
-            if is_up 360 "${values[0]}" "${values[2]}"; then
+            if is_up 360 "${PROJECT_NAME}" "${INSTANCE_NAME}"; then
                 echo "##### The container is active and has the network configured"
             else
                 echo "##### ABORT: The container is not active and/or has not the network configured"
                 exit 255
             fi
 
-            LOG_DIR=kubernetes/logs/"${values[0]}"/"${values[2]}"/
+            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/
             echo "#### Creating the ${LOG_DIR} directory for logs"
             mkdir -p "${LOG_DIR}"
             if [ $? -eq 0 ]; then
@@ -654,55 +949,59 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
-            echo "export K8S_VERSION=${values[8]}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${values[0]}"/"${values[2]}"/bootstrap.sh"))" | lxc --project "${values[0]}" exec "${values[2]}" bash >>kubernetes/logs/"${values[0]}"/"${values[2]}"/install.log 2>&1
+            #echo "export K8S_VERSION=${K8S_VERSION}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh"))" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The required software has been installed"
             else
                 echo "##### [$?] Errors appeared when installing the necessary software"
                 exit 255
             fi
+            #exit
+            GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}/join"
 
-            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${values[2]}"
-            lxc --project "${values[0]}" file push -p ${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml ${values[2]}/root/kubeadm-join-config.yaml --uid 0
+            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
+            lxc --project "${PROJECT_NAME}" file push -p ${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0
             if [ $? -eq 0 ]; then
-                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${values[2]}"
+                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
-                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${values[2]}"
+                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
                 exit 255
             fi
 
             echo "#### Joining the worker to the cluster"
-            lxc --project "${values[0]}" exec "${values[2]}" -- kubeadm --v=5 join --config /root/kubeadm-join-config.yaml --ignore-preflight-errors=all >kubernetes/logs/"${values[0]}"/"${values[2]}"/kubeadmjoin.log 2>&1
+            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 join --config /root/kubeadm-join-config.yaml --ignore-preflight-errors=all >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadmjoin.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The worker has been successfully joined"
             else
                 echo "##### [$?] Error joining the worker"
-                exit 255
+                $FORCE || exit 255
             fi
-
-            echo "### END Configuring the worker: ${values[2]}"
-            echo
+            echo "### END Configuring the worker: ${INSTANCE_NAME}"
         fi
+        echo
     done
 }
 
 copysshkey() {
+    #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
 
-    local IFS=","
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        read -a values <<<"${DEPLOY_LIST[$i]}"
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
 
         local PROJECTS=()
         get_projects
 
-        echo "### Copying SSH public key to container '${values[2]}' in project '${values[0]}' LXC."
-        if is_up "120" "${values[0]}" "${values[2]}"; then
+        echo "### Copying SSH public key to container '${INSTANCE_NAME}' in project '${PROJECT_NAME}' LXC."
+        if is_up "120" "${PROJECT_NAME}" "${INSTANCE_NAME}"; then
             echo "#### The container is active and has the network configured"
         else
             echo "#### ABORT: The container is not active and/or has not the network configured"
             exit 255
         fi
-        lxc --project "${values[0]}" file push lxc/SSH-KEY/lxkube.pub ${values[2]}/root/.ssh/authorized_keys --uid 0
+        lxc --project "${PROJECT_NAME}" file push lxc/SSH-KEY/lxkube.pub ${INSTANCE_NAME}/root/.ssh/authorized_keys --uid 0
         if [ $? -eq 0 ]; then
             echo "#### [OK] SSH public key copied"
         else
@@ -710,91 +1009,130 @@ copysshkey() {
             exit $?
         fi
     done
+    echo
 }
 
 provision() {
+    echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
 
-    if [ "$LXD_DONE" = false ]; then
-        echo -e "## Provisioning LXC containers\n"
+    echo -e "## Provisioning LXC containers\n"
 
-        create_lxc_projects
+    create_lxc_projects
 
-        echo
+    create_lxc_bridges
 
-        create_lxc_bridges
+    create_lxc_profiles
 
-        echo
+    create_lxc_instances
 
-        create_lxc_profiles
+    copysshkey
 
-        echo
-
-        create_lxc_instances
-
-        echo
-
-        copysshkey
-
-        echo
-
-        echo -e "## END of LXC provisioning\n"
-    fi
+    echo -e "## END of LXC provisioning\n"
 
     echo -e "## Provisioning Kubernetes clusters\n"
 
     provision_kubernetes_cluster
 
     echo -e "## END of Kubernetes cluster provisioning"
+    echo -e "\n# END Provisioning Kubernetes Cluster inside LXC containers\n"
 
 }
 
-prepare_input_file() {
-    #content=($(cat "cluster-config-data.csv"))
-    if ! [ -f "config/${CONFIG_FILE}" ]; then
-        echo "The 'config/${CONFIG_FILE}' configuration file does not exist"
-        exit
+valid_config() {
+
+    local error=0
+    PROJECT_TARGET=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
+    if [ "x${PROJECT_TARGET}" = "xnull" ]; then
+        PROJECT_TARGET=""
     fi
 
-    local IFS=$'\n'
-    read -d '' -r -a lines <"config/${CONFIG_FILE}"
+    PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    if [ -z ${PROJECT_NAME} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
+    INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+    if [ -z ${INSTANCES_LENGTH} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
+    K8S_VERSION=$(yq e ".config.kubernetes.version" "config/${CONFIG_FILE}")
+    if [ -z ${K8S_VERSION} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
+    K8S_API_ENDPOINT_DOMAIN=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "config/${CONFIG_FILE}")
+    if [ -z ${K8S_API_ENDPOINT_DOMAIN} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
+    K8S_CLUSTER_NAME=$(yq e '.config.kubernetes.clusterName' "config/${CONFIG_FILE}")
+    if [ -z ${K8S_CLUSTER_NAME} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
+    K8S_POD_SUBNET=$(yq e '.config.kubernetes.podSubnet' "config/${CONFIG_FILE}")
+    if [ -z ${K8S_POD_SUBNET} ]; then
+        error=$((error + $?))
+    fi
+    error=$((error + $?))
 
-    DEPLOY_LIST=()
-    a=${#lines[@]}
-    for ((i = 1; i <= ${#lines[@]}; i++)); do
-        local IFS=","
-        read -a values <<<"${lines[$i]}"
-        if [ ${#values[@]} -lt 9 ]; then
-            continue
+    local PROJECT_PROFILES_TMP=""
+    local PROJECT_INSTANCES_NAME_TMP=""
+    local PROJECT_INSTANCE_IMAGE_TMP=""
+    local PROJECT_INSTANCE_TYPE_TMP=""
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        if [ -z ${PROFILE_NAME} ]; then
+            error=$((error + $?))
+        fi
+        error=$((error + $?))
+        PROJECT_PROFILES_TMP=${PROJECT_PROFILES_TMP}"${PROFILE_NAME}"
+        if [ $((${i} + 1)) -lt ${INSTANCES_LENGTH} ]; then
+            PROJECT_PROFILES_TMP=${PROJECT_PROFILES_TMP},
         fi
 
-        values0=$(echo "${values[0]}" | tr -d '\n\r[:space:]')
-        values1=$(echo "${values[1]}" | tr -d '\n\r[:space:]')
-        values2=$(echo "${values[2]}" | tr -d '\n\r[:space:]')
-        values3=$(echo "${values[3]}" | tr -d '\n\r[:space:]')
-        values4=$(echo "${values[4]}" | tr -d '\n\r[:space:]')
-        values5=$(echo "${values[5]}" | tr -d '\n\r[:space:]')
-        values6=$(echo "${values[6]}" | tr -d '\n\r[:space:]')
-        values7=$(echo "${values[7]}" | tr -d '\n\r[:space:]')
-        values8=$(echo "${values[8]}" | tr -d '\n\r[:space:]')
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        if [ -z ${PROJECT_NAME} ]; then
+            error=$((error + $?))
+        fi
+        error=$((error + $?))
+        PROJECT_INSTANCES_NAME_TMP=${PROJECT_INSTANCES_NAME_TMP}"${INSTANCE_NAME}"
+        if [ $((${i} + 1)) -lt ${INSTANCES_LENGTH} ]; then
+            PROJECT_INSTANCES_NAME_TMP=${PROJECT_INSTANCES_NAME_TMP},
+        fi
 
-        DEPLOY_LIST+=("$(echo -e "${values0},${values1},${values2},${values3},${values4},${values5},${values6},${values7},${values8}")")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        if [ -z ${INSTANCE_IMAGE} ]; then
+            error=$((error + $?))
+        fi
+        PROJECT_INSTANCE_IMAGE_TMP=${PROJECT_INSTANCE_IMAGE_TMP}"${INSTANCE_IMAGE}"
+        if [ $((${i} + 1)) -lt ${INSTANCES_LENGTH} ]; then
+            PROJECT_INSTANCE_IMAGE_TMP=${PROJECT_INSTANCE_IMAGE_TMP},
+        fi
+
+        error=$((error + $?))
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "config/${CONFIG_FILE}")
+        if [ -z ${INSTANCE_TYPE} ]; then
+            error=$((error + $?))
+        fi
+        error=$((error + $?))
+        PROJECT_INSTANCE_TYPE_TMP=${PROJECT_INSTANCE_TYPE_TMP}"${INSTANCE_TYPE}"
+        if [ $((${i} + 1)) -lt ${INSTANCES_LENGTH} ]; then
+            PROJECT_INSTANCE_TYPE_TMP=${PROJECT_INSTANCE_TYPE_TMP},
+        fi
     done
-    if [ "$1" = "show" ]; then
-        show_valid_config
+
+    PROJECT_PROFILES_NAME=${PROJECT_PROFILES_TMP}
+    PROJECT_INSTANCES_NAME=${PROJECT_INSTANCES_NAME_TMP}
+    PROJECT_INSTANCES_IMAGES=${PROJECT_INSTANCE_IMAGE_TMP}
+    PROJECT_INSTANCES_TYPE=${PROJECT_INSTANCE_TYPE_TMP}
+
+    if [ $error -gt 0 ]; then
+        echo error
+        exit 255
     fi
-}
-
-show_valid_config() {
-
-    echo "These are the valid lines in the configuration file,"
-    echo "check that they are all as expected. Do not proceed with the"
-    echo "installation if any lines are missing, which means that something"
-    echo "in the file is missing."
-    echo
-
-    for ((i = 0; i < ${#DEPLOY_LIST[@]}; i++)); do
-        echo "${DEPLOY_LIST[$i]}"
-    done
 }
 
 parse_options() {
@@ -804,6 +1142,11 @@ parse_options() {
         case "${optchar}" in
         -)
             case "${OPTARG}" in
+            force)
+                #val="${!OPTIND}"
+                #OPTIND=$(($OPTIND + 1))
+                FORCE=true
+                ;;
             config)
                 val="${!OPTIND}"
                 OPTIND=$(($OPTIND + 1))
@@ -832,60 +1175,35 @@ parse_options() {
     done
 }
 
+parse_options "$@"
+
+if ! [ -f "config/${CONFIG_FILE}" ]; then
+    usage
+    exit
+fi
+
+valid_config
+
 case "$1" in
 provision)
-    echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
-    #if [ "$2" = "kubernetes" ]; then
-    #    LXD_DONE=true
-    #fi
-    parse_options "$@"
-    prepare_input_file
     provision
-    echo -e "\n# END Provisioning Kubernetes Cluster inside LXC containers\n"
-
     ;;
-destroyinstances)
-    echo -e "\nDestroying all LXD instances...\n"
-    parse_options "$@"
-    prepare_input_file
-    destroyinstances
-    ;;
-destroyprojects)
-    echo -e "\nDestroying all LXD projects...\n"
-    parse_options "$@"
-    prepare_input_file
-    destroyprojects
-    ;;
-verifyconfig)
-    echo -e "\nCheck the configuration file...\n"
-    parse_options "$@"
-    prepare_input_file show
+destroy)
+    destroy
     ;;
 stop)
-    echo -e "\n## Stopping the list of containers...\n"
-    parse_options "$@"
-    prepare_input_file
     lxc_stop_containers
     ;;
 start)
-    echo -e "\n## Starting the list of containers...\n"
-    parse_options "$@"
-    prepare_input_file
     lxc_start_containers
     ;;
 pause)
-    echo -e "\n## Pause the list of containers...\n"
-    parse_options "$@"
-    prepare_input_file
     lxc_pause_containers
     ;;
 restart)
-    echo -e "\n## Restart the list of containers...\n"
-    parse_options "$@"
-    prepare_input_file
+    echo -e "\n## Restarting project instances...\n"
     lxc_stop_containers
     lxc_start_containers
-
     ;;
 *)
     usage
