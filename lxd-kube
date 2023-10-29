@@ -7,6 +7,15 @@ if [ "$EUID" -eq 0 ]; then
 fi
 if ! command -v yq &>/dev/null; then
     echo "yq could not be found"
+    echo
+    echo "The script makes use of the yq command to read and later edit"
+    echo "the configuration files and templates used in the project."
+    echo
+    echo "You can install yq with snap if your system allows it:"
+    echo "sudo snap install yq"
+    echo
+    echo "Or you can see other ways to install the command in the"
+    echo "GitHub project: https://github.com/mikefarah/yq"
     exit 1
 fi
 
@@ -16,7 +25,7 @@ CONFIG_FILE=
 
 usage() {
     echo
-    echo "Usage: lxd-kube [provision|destroy|stop|start|pause|restart] --config file.csv"
+    echo "Usage: lxd-kube [provision|destroy|stop|start|pause|restart] --config project-config-file.yaml --force --delete-generated"
     echo
     exit 1
 }
@@ -507,7 +516,7 @@ destroy() {
     if [ $DELETE_GENERATED = true ]; then
         delete_generated_files
     fi
-    
+
     local PROJECTS=()
     get_projects
 
