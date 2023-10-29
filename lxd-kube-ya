@@ -272,6 +272,9 @@ create_lxc_bridges() {
     #lxc --project ncdc network edit ncdc-lxdbr
     #lxc --project ncdc network edit ncdc-lxdbr < generated-configs/lxc/bridge/ncdc/bridge.yaml
     #lxc --project ncdc network show ncdc-lxdbr
+    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+        return
+    fi
 
     echo "### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME}..."
     if ! get_bridge "${PROJECT_NAME}"-br; then
@@ -430,7 +433,9 @@ delete_lxc_images() {
 delete_lxc_bridges() {
     #if ! is_cluster; then
     #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
-
+    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+        return
+    fi
     echo "### Deleting bridge "${PROJECT_NAME}"-br in project '${PROJECT_NAME}'."
     if get_bridge "${PROJECT_NAME}"-br; then
         lxc network delete "${PROJECT_NAME}"-br
