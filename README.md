@@ -103,7 +103,7 @@ This is the file tree that is involved in this example project that comes with t
 └── lxd-kube
 ```
 
-Start by creating the existing project in the configuration file in LXD, so that within this project there may be associated containers (containers, profiles, images, etc.).
+Start by creating the existing project in the configuration file in LXD, so that within this project there may be associated (containers, profiles, images, etc.).
 
 It checks whether the file lxc/lxdbridge/< current project >/bridge.yaml exists. If this file exists, it creates a local NAT bridge with the configurations present in this file. If the file does not exist it does not create any bridge. When there is a bridge configured in the profiles, it must be in agreement. As you can see from the files made available for this test project. This is an ideal configuration to have on laptops.
 
