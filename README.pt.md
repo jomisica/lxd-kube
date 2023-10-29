@@ -208,18 +208,23 @@ A etiqueta "name" deve conter o mesmo nome de ficheiro sem a extensão, o mesmo 
 
 ```yaml
 config:
-  limits.cpu: "4"
-  limits.memory: 4GB
+  limits.memory: 2GB
+  limits.cpu: 1,2
+  #limits.cpu: "2"
+  #limits.cpu: 0-3
+  limits.cpu.allowance: 30%
+  limits.cpu.priority: 5
+  #limits.cpu.allowance: 50ms/200ms
   limits.memory.swap: "false"
   linux.kernel_modules: ip_tables,ip6_tables,nf_nat,overlay,br_netfilter
   raw.lxc: "lxc.apparmor.profile=unconfined\nlxc.cap.drop= \nlxc.cgroup.devices.allow=a\nlxc.mount.auto=proc:rw sys:rw\nlxc.mount.entry = /dev/kmsg dev/kmsg none defaults,bind,create=file"
   security.privileged: "true"
   security.nesting: "true"
-description: Perfil LXD para Kubernetes
+description: LXD profile for Kubernetes
 devices:
   eth0:
-    hwaddr: 00:16:3e:00:c0:88
     name: eth0
+    hwaddr: 00:16:3e:10:00:01
     nictype: bridged
     parent: lxdbridge
     type: nic
