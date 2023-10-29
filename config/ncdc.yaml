@@ -17,21 +17,21 @@ config:
   instances:
   - instance:
     lxd:
-      name: project-kmaster
+      name: ncdc-kmaster
       image: ubuntu:22.04
       profile: k8s-kmaster
     kubernetes:
       type: master
   - instance:
     lxd:
-      name: project-kworker1
+      name: ncdc-kworker1
       image: ubuntu:22.04
       profile: k8s-kworker1
     kubernetes:
       type: worker
   - instance:
     lxd:
-      name: project-kworker2
+      name: ncdc-kworker2
       image: ubuntu:22.04
       profile: k8s-kworker2
     kubernetes:
