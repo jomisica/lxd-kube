@@ -40,37 +40,67 @@ Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que 
 
 ```shell
 ├── config
-│   └── test-local.csv
+│   └── ncdc1.yaml
+├── generated-configs
+│   ├── kubernetes
+│   │   └── templates
+│   │       ├── ncdc1
+│   │           ├── cni
+│   │           │   ├── 000-install-calito-operator.yaml
+│   │           │   └── 001-calito-custom resource.yaml
+│   │           ├── init
+│   │           │   └── kubeadm-init-config.yaml
+│   │           └── join
+│   │               └── kubeadm-join-config.yaml
+│   └── lxc
+│       ├── bridge
+│       │   └── ncdc1
+│       │   │   └── bridge.yaml
+│       └── profiles
+│           └── ncdc1
+│               ├── k8s-kmaster.yaml
+│               ├── k8s-kworker1.yaml
+│               └── k8s-kworker2.yaml
 ├── kubernetes
-│   ├── bootstrap
-│   │   ├── default
-│   │   │   └── bootstrap.sh
-│   │   └── project
-│   │       ├── project-kmaster
-│   │       │   └── bootstrap.sh
-│   │       ├── project-kworker1
-│   │       │   └── bootstrap.sh
-│   │       └── project-kworker2
-│   │           └── bootstrap.sh
-│   └── templates
-│       ├── default
-│       │   ├── kubeadm-config.yaml
-│       │   ├── kubeadm-flannel.yaml
-│       │   ├── kubeadm-init-config.yaml
-│       │   └── kubeadm-join-config.yaml
-│       └── project
-│           └── kubeadm-init-config.yaml
+│   ├── bootstrap
+│   │   └── default
+│   │       └── bootstrap.sh
+│   ├── kubectl-configs
+│   │   └── ncdc1
+│   │       └── kubeconfig
+│   └── templates
+│       └── ncdc1
+│           ├── cni
+│           │   ├── 000-install-calito-operator.yaml
+│           │   └── 001-calito-custom resource.yaml
+│           ├── csi
+│           ├── init
+│           │   └── kubeadm-init-config.yaml
+│           ├── join
+│           │   └── kubeadm-join-config.yaml
+│           └── kubeconfig
+│               └── kubeadm-config.yaml
+├── logs
+│   └── ncdc1
+│       ├── ncdc1-kmaster
+│       │   ├── install.log
+│       │   └── kubeadminit.log
+│       ├── ncdc1-kworker1
+│       │   ├── install.log
+│       │   └── kubeadmjoin.log
+│       └── ncdc1-kworker2
+│           ├── install.log
+│           └── kubeadmjoin.log
 ├── lxc
-    ├── lxdbridge
-    │   └── test
-    │       └── bridge.yaml
-    ├── profiles
-        ├── default
-        │   └── k8s.yaml
-        └── test
-            ├── k8s-kmaster.yaml
-            ├── k8s-kworker1.yaml
-            └── k8s-kworker2.yaml
+│   ├── lxdbridge
+│   │   └── ncdc1
+│   │      └── bridge.yaml
+│   └── profiles
+│       └── ncdc1
+│           ├── k8s-kmaster.yaml
+│           ├── k8s-kworker1.yaml
+│           └── k8s-kworker2.yaml
+└── lxd-kube
 ```
 
 Vou explicar como funciona a execução do script e a relação que tem com os templates e os scripts de bootstrap.
