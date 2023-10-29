@@ -314,7 +314,7 @@ Para provisionar os projetos definidos no ficheiro de configuração, execute o 
 $ bash lxd-kube provision --config project-config-file.yaml
 ```
 
-### Destruir containers LXD e clusters Kubernetes
+### Destruir projectos LXD e clusters Kubernetes
 
 Para destruir os projetos definidos no ficheiro de configuração, execute o seguinte comando:
 
