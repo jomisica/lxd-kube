@@ -1,0 +1,59 @@
+config:
+  description: Test yaml config file
+  lxd:
+    projectName: ncdc
+  kubernetes:
+    clusterName: ncdc
+    version: 1.26.0
+    podSubnet: 10.10.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+  instances:
+  - instance:
+    lxd:
+      name: project-kmaster
+      image: ubuntu:22.04
+      profile: k8s-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: project-kworker1
+      image: ubuntu:22.04
+      profile: k8s-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: project-kworker2
+      image: ubuntu:22.04
+      profile: k8s-kworker2
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: project-kworker3
+      image: ubuntu:22.04
+      profile: k8s-kworker3
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: project-kworker4
+      image: ubuntu:22.04
+      profile: k8s-kworker4
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: project-kworker5
+      image: ubuntu:22.04
+      profile: k8s-kworker5
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: project-kworker6
+      image: ubuntu:22.04
+      profile: k8s-kworker6
+    kubernetes:
+      type: worker

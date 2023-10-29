@@ -2,8 +2,10 @@
 .DS_Store
 .gitignore
 .local
-kubernetes/logs
+logs
 kubernetes/kubectl-configs
-kubernetes/generated-configs
+generated-configs
 lxc/generated-configs
 test.sh
+lxd-kube-ya
+#config/default.yaml

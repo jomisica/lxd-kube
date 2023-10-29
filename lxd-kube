@@ -6,6 +6,12 @@ if [ "$EUID" -eq 0 ]; then
     exit
 fi
 
+if ! command -v ya &> /dev/null; then
+    echo "ya could not be found"
+    exit 1
+fi
+
+
 LXD_DONE=false
 CONFIG_FILE=default.csv
 

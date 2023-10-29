@@ -1,0 +1,32 @@
+config:
+  description: Test yaml config file
+  lxd:
+    projectName: ncdc
+    target: terra
+  kubernetes:
+    clusterName: ncdc
+    version: 1.22.0
+    podSubnet: 10.10.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+  instances:
+  - instance:
+    lxd:
+      name: ncdc-kmaster
+      image: ubuntu:22.04
+      profile: k8s-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc-kworker1
+      image: ubuntu:22.04
+      profile: k8s-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc-kworker2
+      image: ubuntu:22.04
+      profile: k8s-kworker2
+    kubernetes:
+      type: worker
