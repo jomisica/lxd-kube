@@ -137,7 +137,7 @@ Then the script starts working on the worker nodes, which is a simpler and faste
 Then the bootstrap script is launched, which is located in the following directory, kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh if it exists. If this file does not exist, the default bootstrap script is used, which is located in the following directory, kubernetes/bootstrap/default/bootstrap.sh.
 Which deals with the software installation process.
 
-Then, with the file that was generated in the master configuration process, the worker node is next to the cluster.
+Then, with the file that was generated in the master configuration process, the worker node is joined to the cluster.
 
 This worker nodes process is the same for all worker nodes.
 
