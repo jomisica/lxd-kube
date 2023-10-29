@@ -1,5 +1,8 @@
 config:
-  description: Test yaml config file
+  description: This example project works on clustered LXD. However, the
+    bridge must be configured in Linux first. In this specific case I use the
+    lxdbrige bridge that is created in the system and configured. And use the
+    default project profile, which by default uses this bridge for the network.
   lxd:
     projectName: ncdc
   kubernetes:
