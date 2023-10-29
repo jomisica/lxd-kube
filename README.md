@@ -263,19 +263,7 @@ $ sudo bash install-lxd.sh
 
 The 'config/default.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
 
-### Verify Configuration File
 
-This command will read the configuration file and filter only the lines that do not appear to have an error, you must check that no lines were excluded. If they were, it's because something was wrongly written in the file.
-
-Check the default configuration file.
-```shell
-$ bash lxd-kube verifyconfig
-```
-
-Check a different configuration file.
-```shell
-$ bash lxd-kube verifyconfig --config k8s-1.22.0.csv
-```
 
 ### Provision Kubernetes Clusters
 

@@ -275,20 +275,6 @@ $ sudo bash install-lxd.sh
 
 O ficheiro 'config/default.csv' é o ficheiro utilizado pelo script para criar os containers e configurar os clusters Kubernetes desejados. Este mesmo ficheiro é utilizado quando desejamos eliminar projetos. É um ficheiro CSV que utiliza uma vírgula como separador. Todas as linhas devem terminar com uma vírgula. Cada linha deve conter nove colunas.
 
-### Verificar o Ficheiro de Configuração
-
-Este comando irá ler o ficheiro de configuração e filtar apenas as linhas que não aparetem ter erro, deve verificar se não foram excluidas linhas. Se foram é porque está algo mal escrito no ficheiro.
-
-Verificar o ficheiro configuração por defeito.
-```shell
-$ bash lxd-kube verifyconfig
-```
-
-Verificar um ficheiro configuração diferente.
-```shell
-$ bash lxd-kube verifyconfig --config k8s-1.22.0.csv
-```
-
 ### Provisionar Clusters Kubernetes
 
 Para provisionar os projetos definidos no ficheiro de configuração, execute o seguinte comando:
