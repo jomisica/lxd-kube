@@ -15,6 +15,8 @@ Este README explica como criar clusters Kubernetes dentro de containers LXD.
 
 > **Note:** Nota: Pode ser uma configuração inicial para produção; no entanto, muitos aspetos de segurança e armazenamento têm de ser tratados para serem usados em produção com segurança.
 
+> **Note:** Neste momento o kubernetes usa por defeito apenas o storage do container. Futuramente irei implementar uma forma de passar templates para o sistema CSI, deforma a que já seja logo de inicio gonfigurado algum tipo de storage, e que permita usar varios tipos.
+
 ## Para que serve este projeto
 
 Este projeto é utilizado para configurar um cluster Kubernetes em containers LXC. No entanto, existem pelo menos duas maneiras de utilizá-lo: a nível profissional e não profissional. Dentro desses dois principais grupos, existem muitos subgrupos.
