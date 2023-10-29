@@ -273,16 +273,16 @@ create_lxc_bridges() {
     #lxc --project ncdc network edit ncdc-lxdbr < generated-configs/lxc/bridge/ncdc/bridge.yaml
     #lxc --project ncdc network show ncdc-lxdbr
 
-    echo "### Creating bridge ${PROJECT_NAME}-lxdbr for project ${PROJECT_NAME}..."
-    if ! get_bridge "${PROJECT_NAME}"-lxdbr; then
+    echo "### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME}..."
+    if ! get_bridge "${PROJECT_NAME}"-br; then
 
         if is_cluster; then
             CLUSSTER_MEMBERS=()
             get_cluster_member
 
             for ((o = 0; o < ${#CLUSSTER_MEMBERS[@]}; o++)); do
-                echo "#### Creating bridge ${PROJECT_NAME}-lxdbr for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
-                lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-lxdbr --target="${CLUSSTER_MEMBERS[$o]}"
+                echo "#### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
+                lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br --target="${CLUSSTER_MEMBERS[$o]}"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] The bridge was created on member ${CLUSSTER_MEMBERS[$o]}."
                 else
@@ -292,7 +292,7 @@ create_lxc_bridges() {
             done
         fi
 
-        lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-lxdbr
+        lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge created"
         else
@@ -309,7 +309,7 @@ create_lxc_bridges() {
     mkdir -p generated-configs/lxc/bridge/"${PROJECT_NAME}"
     #$(envsubst <"lxc/lxdbridge/"${PROJECT_NAME}"/bridge.yaml" >generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
     evolve_templates "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml"
-    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-lxdbr < <(cat generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
+    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-br < <(cat generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
 
     if [ $? -eq 0 ]; then
         echo "#### [OK] Bridge edited"
@@ -430,9 +430,9 @@ delete_lxc_bridges() {
     #if ! is_cluster; then
     #local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
 
-    echo "### Deleting bridge "${PROJECT_NAME}"-lxdbr in project '${PROJECT_NAME}'."
-    if get_bridge "${PROJECT_NAME}"-lxdbr; then
-        lxc network delete "${PROJECT_NAME}"-lxdbr
+    echo "### Deleting bridge "${PROJECT_NAME}"-br in project '${PROJECT_NAME}'."
+    if get_bridge "${PROJECT_NAME}"-br; then
+        lxc network delete "${PROJECT_NAME}"-br
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge deleted"
         else

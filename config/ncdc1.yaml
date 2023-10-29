@@ -1,0 +1,36 @@
+config:
+  description: This example project works on clustered LXD.
+    But as it uses a NAT network interface, all containers must be in the same
+    member of the LXD cluster, otherwise Kubernetes will not be able to
+    communicate with the nodes. To do this, I use the target option to specify
+    the LXD member that I need to create containers to be used by Kubernetes.
+  lxd:
+    projectName: ncdc1
+    target: terra # cluster members: terra, marte
+  kubernetes:
+    clusterName: ncdc1
+    version: 1.22.0
+    podSubnet: 10.10.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+  instances:
+  - instance:
+    lxd:
+      name: ncdc1-kmaster
+      image: ubuntu:22.04
+      profile: k8s-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc1-kworker1
+      image: ubuntu:22.04
+      profile: k8s-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc1-kworker2
+      image: ubuntu:22.04
+      profile: k8s-kworker2
+    kubernetes:
+      type: worker

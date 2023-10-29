@@ -1,8 +1,8 @@
 config:
-  description: Test yaml config file
+  description: Test yaml config file for project ncdc1
   lxd:
     projectName: ncdc
-    target: terra
+    target: terra # cluster menbers: terra, marte
   kubernetes:
     clusterName: ncdc
     version: 1.22.0
