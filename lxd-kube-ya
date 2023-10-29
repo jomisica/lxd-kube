@@ -369,9 +369,7 @@ create_lxc_instances() {
 
     local target=""
 
-
-
-    if ! [ "x${PROJECT_TARGET}" = "x" ] && ! [ "x${PROJECT_TARGET}" = "xnull" ]; then
+    if ! [ -z "${PROJECT_TARGET}" ]; then
         target=" --target=${PROJECT_TARGET}"
     fi
 
@@ -1039,6 +1037,9 @@ valid_config() {
 
     local error=0
     PROJECT_TARGET=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
+    if [ "x${PROJECT_TARGET}" = "xnull" ]; then
+        PROJECT_TARGET=""
+    fi
 
     PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
     if [ -z ${PROJECT_NAME} ]; then
