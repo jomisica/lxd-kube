@@ -750,6 +750,18 @@ provision_kubernetes_cluster() {
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
             K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
+
+            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
+            echo "#### Creating the ${LOG_DIR} directory for logs"
+            mkdir -p "${LOG_DIR}"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
+            else
+                echo "##### [$?] Error creating ddd directory for logs"
+                exit 255
+            fi
+
+
             local master_node_joined=
             master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
             local node_exists=$?
@@ -770,15 +782,7 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
-            echo "#### Creating the ${LOG_DIR} directory for logs"
-            mkdir -p "${LOG_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for logs"
-                exit 255
-            fi
+
 
             K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
 
