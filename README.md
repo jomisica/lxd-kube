@@ -264,33 +264,20 @@ $ sudo bash install-lxd.sh
 The 'config/default.csv' file is the file used by the script to create the containers and configure the desired Kubernetes clusters. This same file is used when we want to destroy projects. It is a CSV file that uses a comma as a separator. All lines must end with a comma. Each row must have nine columns.
 
 
-
 ### Provision Kubernetes Clusters
 
 To provision the projects that are defined in the 'default.csv' configuration file, we run the following command:
 
-Using the default configuration file.
 ```shell
-$ bash lxd-kube provision
-```
-
-Using different configuration file.
-```shell
-$ bash lxd-kube provision  --config k8s-1.22.0.csv
+$ bash lxd-kube provision --config project-config-file.yaml
 ```
 
 ### Destroy LXD containers and Kubernetes clusters
 
 To destroy the projects that are defined in the 'default.csv' configuration file, we run the following command:
 
-Using the default configuration file.
 ```shell
-$ bash lxd-kube destroyprojects
-```
-
-Using different configuration file.
-```shell
-$ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
+$ bash lxd-kube destroy --config project-config-file.yaml
 ```
 
 
@@ -300,30 +287,26 @@ These actions become particularly important when working on multiple projects si
 
 ### Stop containers
 
-Using different configuration file.
 ```shell
-$ bash lxd-kube stop --config k8s-1.22.0.csv
+$ bash lxd-kube stop --config project-config-file.yaml
 ```
 
 ### Start containers
 
-Using different configuration file.
 ```shell
-$ bash lxd-kube start --config k8s-1.22.0.csv
+$ bash lxd-kube start --config project-config-file.yaml
 ```
 
 ### Pause containers
 
-Using different configuration file.
 ```shell
-$ bash lxd-kube pause --config k8s-1.22.0.csv
+$ bash lxd-kube pause --config project-config-file.yaml
 ```
 
 ### Restart containers
 
-Using different configuration file.
 ```shell
-$ bash lxd-kube restart --config k8s-1.22.0.csv
+$ bash lxd-kube restart --config project-config-file.yaml
 ```
 
 ## Suggestion for Improvements

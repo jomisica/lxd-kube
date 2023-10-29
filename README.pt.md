@@ -279,30 +279,17 @@ O ficheiro 'config/default.csv' é o ficheiro utilizado pelo script para criar o
 
 Para provisionar os projetos definidos no ficheiro de configuração, execute o seguinte comando:
 
-Usando o ficheiro configuração por defeito.
 ```shell
-$ bash lxd-kube provision
-```
-
-Usando o ficheiro configuração diferente.
-```shell
-$ bash lxd-kube provision --config k8s-1.22.0.csv
+$ bash lxd-kube provision --config project-config-file.yaml
 ```
 
 ### Destruir containers LXD e clusters Kubernetes
 
 Para destruir os projetos definidos no ficheiro de configuração, execute o seguinte comando:
 
-Usando o ficheiro configuração por defeito.
 ```shell
-$ bash lxd-kube destroyprojects
+$ bash lxd-kube destroy --config project-config-file.yaml
 ```
-
-Usando o ficheiro configuração diferente.
-```shell
-$ bash lxd-kube destroyprojects --config k8s-1.22.0.csv
-```
-
 
 As ações são sempre realizadas em massa; por exemplo, podemos interromper todos os containers do LXD listados no ficheiro de configuração. Sempre devemos separar os projetos em diferentes ficheiros de configuração. No entanto, se um arquivo contiver mais de um projeto, as ações serão aplicadas a todos os containers listados no ficheiro.
 
@@ -310,34 +297,27 @@ Estas ações são importantes se trabalharmos com mais de um projecto ao mesmo 
 
 ### Parar containers
 
-Usando o ficheiro configuração diferente.
 ```shell
-$ bash lxd-kube stop --config k8s-1.22.0.csv
+$ bash lxd-kube stop --config project-config-file.yaml
 ```
 
 ### Iniciar containers
 
-Usando o ficheiro configuração diferente.
 ```shell
-$ bash lxd-kube start --config k8s-1.22.0.csv
+$ bash lxd-kube start --config project-config-file.yaml
 ```
 
 ### Pausar containers
 
-Usando o ficheiro configuração diferente.
 ```shell
-$ bash lxd-kube pause --config k8s-1.22.0.csv
+$ bash lxd-kube pause --config project-config-file.yaml
 ```
 
 ### Reinicializar containers
 
-Usando o ficheiro configuração diferente.
 ```shell
-$ bash lxd-kube restart --config k8s-1.22.0.csv
+$ bash lxd-kube restart --config project-config-file.yaml
 ```
-
-
-
 
 ## Sugestões para Melhorias
 
