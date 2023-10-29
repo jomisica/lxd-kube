@@ -3,7 +3,7 @@ config:
    It is configured with NAT, ideal when we want to test a Kubernetes
    cluster on a laptop or work PC.
    If we use this project in an LXD cluster, it will not work because
-   as it is in NAT and the machines are spread across the cluster members,
+   as it is in NAT and the containers are spread across the cluster members,
    Kubernetes will not be able to communicate between nodes that are in a
    different LXD member.
   lxd:
