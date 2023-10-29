@@ -281,8 +281,7 @@ $ bash lxd-kube destroy --config project-config-file.yaml
 ```
 
 
-The actions are always carried out in bulk. For example, we can stop all LXD containers listed in the configuration file. It is essential to separate projects into different configuration files. However, if a file contains more than one project, the actions are consistently applied to all containers listed in the file.
-
+The actions are always carried out in bulk. For example, we can stop all LXD containers listed in the configuration file.
 These actions become particularly important when working on multiple projects simultaneously. You might have several clusters configured, but you may only wish to work on one at a time. Pausing or stopping projects that are not in use at a given moment helps conserve resources.
 
 ### Stop containers

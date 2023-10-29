@@ -291,7 +291,7 @@ Para destruir os projetos definidos no ficheiro de configuração, execute o seg
 $ bash lxd-kube destroy --config project-config-file.yaml
 ```
 
-As ações são sempre realizadas em massa; por exemplo, podemos interromper todos os containers do LXD listados no ficheiro de configuração. Sempre devemos separar os projetos em diferentes ficheiros de configuração. No entanto, se um arquivo contiver mais de um projeto, as ações serão aplicadas a todos os containers listados no ficheiro.
+As ações são sempre realizadas em massa; por exemplo, podemos interromper todos os containers do LXD listados no ficheiro de configuração.
 
 Estas ações são importantes se trabalharmos com mais de um projecto ao mesmo tempo. Podemos ter configurados varios clusters, no entanto podemos querer trabalhar em apenas um de cada vez. Pausando ou parando os projectos que não estamos a usar no momento é uma poupança de recursos.
 
