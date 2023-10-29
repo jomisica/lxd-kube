@@ -103,18 +103,11 @@ Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que 
 └── lxd-kube
 ```
 
-Vou explicar como funciona a execução do script e a relação que tem com os templates e os scripts de bootstrap.
+Quando se inicia o script com um determinado ficheiro de configuração. O script começa por fazer uma verificação minima no ficheiro de configuração.
 
-Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que vem acompanhado com o projecto.
+Começa por criar o projecto existente no ficheiro de configuração no LXD, para que dentro deste projecto possam existir (containers, perfis, imagens, etc) associadas.
 
-Quando se inicia o script com um determinado ficheiro de configuração, que neste caso é test-local.csv. O script começa por uma filtragem removendo linhas vazias e fazendo trim aos dados de cada linha e removendo linhas com um numero de colunas erradas.
-Uma verificação minima no ficheiro de configuração.
-
-Depois o script começa a fazer loops sobre as linhas de dados. 
-
-Começa por criar todos os projectos existentes no ficheiro de configuração no LXD, para que dentro destes projectos possam existir containers, perfis, imagens, etc, associadas.
-
-Depois o script detecta se o LXD está a trabalhar em cluster. Se ele não estiver a treabalhar em cluster, ele analisa se o ficheiro lxc/lxdbridge/< corrente projecto >/bridge.yaml existe. Se esse ficheiro existir ele cria uma bridge local em NAT com as configurações presentes neste ficheiro. Se o ficheiro não existir ele não cria qualquer bridge. Quando existe a bridge configurada nos perfis de estar de acordo. Como podem ver pelos ficheiros disponibilizados para este projecto de test. Esta é uma configuração ideal para ter em portateis. 
+Ele analisa se o ficheiro lxc/lxdbridge/< corrente projecto >/bridge.yaml existe. Se esse ficheiro existir ele cria uma bridge local em NAT com as configurações presentes neste ficheiro. Se o ficheiro não existir ele não cria qualquer bridge. Quando existe a bridge configurada nos perfis deve estar de acordo. Como podem ver pelos ficheiros disponibilizados para este projecto de test. Esta é uma configuração ideal para ter em portateis. 
 
 Depois o script faz um loop novamente criando todos os perfis que estejam listados no ficheiro de configuração e a cada um deles é atribuido o conteudo dos ficheiros neste caminho, lxc/profiles/< nome do projecto >/< nome do perfil >.yaml. Se este ficheiro não existir é usado em sua substituição o perfil por defeito, disponibilizado com o projecto, que se encontra no seguinte directório lxc/profiles/default/k8s.yaml.
 
@@ -122,7 +115,7 @@ Depois entra em loop novamente criando todos os containers necessários para o p
 
 Depois é adicionada a chave publica do SSH a cada container, para podermos aceder para analisar algo.
 
-Neste momento está tudo criado no LXD, projectos, perfis, containers.
+Neste momento está tudo criado no LXD, projecto, perfis, containers.
 
 O script aguarda que todos os containers estejam a correr e com a interface de rede activa com IP, para poder começar a instalar o kubernetes nos containers.
 
@@ -137,7 +130,7 @@ Depois são descarregadas as imagens base do kubernetes, que depende claro da ve
 
 Depois é inicializado o master plane com o ficheiro gerado nos processos anteriores. Se correr tudo bem o master plane é inicializado.
 
-Depois é feito a instalação do Flannel no kubernetes para que este possa gerir a rede e estar pronto para que os worker nodes possam ser juntos ao cluster.
+Depois é feito a instalação de um plugin de CNI Flannel ou outro neste exemplo o Calito no kubernetes para que este possa gerir a rede e estar pronto para que os worker nodes possam ser juntos ao cluster.
 
 Basicamente termina a instalação do master plane.
 

@@ -103,43 +103,49 @@ This is the file tree that is involved in this example project that comes with t
 └── lxd-kube
 ```
 
-When starting the script with a specific configuration file, in this case 'test-local.csv,' the script begins by filtering the data, removing empty lines, trimming each line, and eliminating lines with the incorrect number of columns. It performs a basic check on the configuration file.
+At this moment, Kubernetes only uses container storage by default. In the future I will implement a way of passing templates to the CSI system, so that some type of storage is already configured from the beginning, and that allows the use of different types. When the script starts with a certain configuration file. The script starts by doing a minimal check on the configuration file.
 
-The script then iterates through the data rows. It starts by creating all the projects listed in the configuration file within LXD. These projects serve as containers, profiles, images, etc.
+Start by creating the existing project in the configuration file in LXD, so that within this project there may be associated containers (containers, profiles, images, etc.).
 
-The script checks whether LXD is operating in a cluster. If not, it checks the existence of the file 'lxc/lxdbridge/< current project >/bridge.yaml.' If the file exists, it creates a local NAT bridge with the configurations from this file. If the file doesn't exist, no bridge is created. It's important that the bridge configurations align with the profiles, as demonstrated in the provided files for this test project. This configuration is ideal for laptops.
+It checks whether the file lxc/lxdbridge/< current project >/bridge.yaml exists. If this file exists, it creates a local NAT bridge with the configurations present in this file. If the file does not exist it does not create any bridge. When there is a bridge configured in the profiles, it must be in agreement. As you can see from the files made available for this test project. This is an ideal configuration to have on laptops.
 
-The script continues by creating all the profiles listed in the configuration file, naming each of them after the files located in 'lxc/profiles/< project name >/< profile name >.yaml.' If a file is missing, it defaults to the profile named 'k8s.yaml' available within 'lxc/profiles/default/'.
+Then the script loops again creating all the profiles that are listed in the configuration file and each of them is assigned the contents of the files in this path, lxc/profiles/< project name >/< profile name >.yaml. If this file does not exist, the default profile, available with the project, which is located in the following directory lxc/profiles/default/k8s.yaml, is used instead.
 
-The script proceeds to create all the necessary containers for the project, associating each container with the corresponding profile created earlier.
+Then it goes into a loop again, creating all the containers necessary for the project, and each of them associates the corresponding profile created in the previous step.
 
-It adds an SSH public key to each container, enabling access for analysis.
+Then the SSH public key is added to each container, so we can access it to analyze something.
 
-Once everything is set up in LXD projects, profiles, containers, the script waits for all containers to be running with active network interfaces and IP addresses before it can begin installing Kubernetes in the containers.
+At the moment everything is created in LXD, project, profiles, containers.
 
-The script loops through the containers, starting with the first one, typically the Kubernetes master node. It checks whether the domain provided in the configuration file resolves to the container's IP address, assigned via DHCP or another method through the container profile during the creation process. If the domain resolves correctly, the installation proceeds; otherwise, it's aborted.
+The script waits for all containers to be running and have an active network interface with IP, before it can start installing kubernetes in the containers.
 
-The script launches the bootstrap script located at 'kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh' if it exists. If not, it uses the default bootstrap script located at 'kubernetes/bootstrap/default/bootstrap.sh.' This script's role is to install dependencies and Kubernetes components, including containerd, but it can be customized for specific needs.
+The script loops through the containers and starts with the first one in the list which must be the kubernetes master plane. It resolves to the domain that is provided in the configuration file, to see if it resolves to the IP that the container gained either via DHCP in this case or with another configuration through the container profile in the creation process. If the domain resolves correctly to the container's IP, the installation continues, otherwise the installation is aborted.
 
-Next, the script generates configuration files to set up Kubernetes using data from the configuration file and the necessary generated tokens.
+Then the bootstrap script is launched, which is located in the following directory, kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh if it exists. If this file does not exist, the default bootstrap script is used, which is located in the following directory, kubernetes/bootstrap/default/bootstrap.sh.
+This script's function is to install the dependencies and kubernetes, containerd by default. However, it can be modified to do something else that is necessary in a given context.
 
-Base Kubernetes images are downloaded, depending on the cluster's version. This step can be time-consuming, taking up to half an hour on some occasions.
+Then the script generates the configuration files to configure kubernetes with the configuration file data as well as necessary generated token.
 
-The master node is then initialized with the configuration files generated in previous steps. If everything goes smoothly, the master node is successfully initialized.
+Then the base Kubernetes images are downloaded, which of course depends on the version of the cluster we are installing. This process is quite time-consuming, depending on the occasion, it can take up to half an hour.
 
-Subsequently, Flannel is installed in Kubernetes to manage the network and prepare for the addition of worker nodes.
+The master plane is then initialized with the file generated in the previous processes. If everything goes well, the master plane is initialized.
 
-That essentially concludes the installation of the master node.
+Then, a CNI Flannel plugin or another, in this example, Calito, is installed in Kubernetes so that it can manage the network and be ready for the worker nodes to be added to the cluster.
 
-The script then begins working on the worker nodes, which is a simpler and faster process.
+Basically, the installation of the master plane ends.
 
-It again checks for the existence of a custom bootstrap script in 'kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh,' falling back to the default script in 'kubernetes/bootstrap/default/bootstrap.sh' if needed. This script handles the software installation process.
+Then the script starts working on the worker nodes, which is a simpler and faster process.
 
-Using the configuration file generated during the master node configuration, the script adds worker nodes to the cluster. This process is the same for all worker nodes.
+Then the bootstrap script is launched, which is located in the following directory, kubernetes/bootstrap/< project name >/< container name hostname >/bootstrap.sh if it exists. If this file does not exist, the default bootstrap script is used, which is located in the following directory, kubernetes/bootstrap/default/bootstrap.sh.
+Which deals with the software installation process.
 
-When the script finishes adding all worker nodes, the configuration is complete, and the script concludes.
+Then, with the file that was generated in the master configuration process, the worker node is next to the cluster.
 
-If an error occurs during any step of the process, the entire script is aborted, and an error message is displayed.
+This worker nodes process is the same for all worker nodes.
+
+When the script finishes adding all worker nodes, configuration is complete and the script ends.
+
+If there is an error during the process, the entire script is aborted, with an error message.
 
 
 ## Installing LXD on Ubuntu
