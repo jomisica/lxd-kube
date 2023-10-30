@@ -19,7 +19,7 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
-K8S_API_ENDPOINT_USE_IP=false
+K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
 DELETE_GENERATED=false
 FORCE=false
 CONFIG_FILE=
@@ -778,12 +778,17 @@ provision_kubernetes_cluster() {
         CURRENT_INSTANCE_IMAGE=${INSTANCE_IMAGE}
         INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
 
-        if [ ${K8S_API_ENDPOINT_USE_IP} ]; then
+        K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+
+        if [ ${K8S_KUBE_CONFIG_ENDPOINT_USE_IP} = true ]; then
             K8S_API_ENDPOINT=${INSTANCE_IP}
         fi
 
+        #echo  $K8S_API_ENDPOINT
+        #exit
         #apply_cni_configs
         #exit
+
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
             K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
@@ -1064,18 +1069,19 @@ provision() {
 
     echo -e "## END of Kubernetes cluster provisioning"
     echo -e "\n# END Provisioning Kubernetes Cluster inside LXC containers\n"
-
+    
 }
 
 valid_config() {
     local error=0
 
-    K8S_API_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.controlPlaneEndpointUseIP' "config/${CONFIG_FILE}")
-    if [ "x${K8S_API_ENDPOINT_USE_IP}" = "xfalse" ] || [ "x${K8S_API_ENDPOINT_USE_IP}" = "xnull" ]; then
-        K8S_API_ENDPOINT_USE_IP=false
+    K8S_KUBE_CONFIG_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.KubeConfigEndpointUseIP' "config/${CONFIG_FILE}")
+    if [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xfalse" ] || [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xnull" ]; then
+        K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
     else
-        K8S_API_ENDPOINT_USE_IP=true
+        K8S_KUBE_CONFIG_ENDPOINT_USE_IP=true
     fi
+
 
     PROJECT_TARGET=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
     if [ "x${PROJECT_TARGET}" = "xnull" ]; then
