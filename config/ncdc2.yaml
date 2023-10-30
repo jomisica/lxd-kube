@@ -1,11 +1,19 @@
 config:
-  description: This example project works on LXD without being clustered.
+  description: "This example project works on LXD without being clustered.
    It is configured with NAT, ideal when we want to test a Kubernetes
    cluster on a laptop or work PC.
    If we use this project in an LXD cluster, it will not work because
    as it is in NAT and the containers are spread across the cluster members,
    Kubernetes will not be able to communicate between nodes that are in a
    different LXD member.
+   Also, access to Kubernetes does not work from the local network, it only
+   works from the machine on which LXD is installed. Access to Kubernetes must
+   be via IP since the domain configured in the project is internal to the
+   containers. To use the domain we must create a hosts record on the machine
+   where LXD is installed pointing to the master plane IP or add the
+   option controlPlaneEndpointUseIP: true, in the project configuration, as the case
+   may be. With this option, kube config is configured with the IP and not the
+   domain."
   lxd:
     projectName: ncdc2
   kubernetes:
