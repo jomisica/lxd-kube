@@ -19,6 +19,7 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
+K8S_API_ENDPOINT_USE_IP=false
 DELETE_GENERATED=false
 FORCE=false
 CONFIG_FILE=
@@ -399,7 +400,7 @@ create_lxc_instances() {
         if ! is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
             echo "#### With the image '${INSTANCE_IMAGE}'."
             echo "#### With the profile '${PROFILE_NAME}'."
-            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}""${target}"
+            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}" ${target}
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance created"
             else
@@ -776,6 +777,11 @@ provision_kubernetes_cluster() {
         CURRENT_PROFILE_NAME=${PROFILE_NAME}
         CURRENT_INSTANCE_IMAGE=${INSTANCE_IMAGE}
         INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
+
+        if [ ${K8S_API_ENDPOINT_USE_IP} ]; then
+            K8S_API_ENDPOINT=${INSTANCE_IP}
+        fi
+
         #apply_cni_configs
         #exit
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
@@ -812,10 +818,8 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
-
-            echo "#### Resolving the master plane domain:" ${K8S_API_ENDPOINT}
-            echo "nslookup '${K8S_API_ENDPOINT}' | grep 'Address:' | grep '${INSTANCE_IP}'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            echo "#### Resolving the master plane domain: ${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}"
+            echo "nslookup '${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}' | grep 'Address:' | grep '${INSTANCE_IP}'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### It is possible to resolve the domain to the machine's IP:" ${INSTANCE_IP}
             else
@@ -908,9 +912,9 @@ provision_kubernetes_cluster() {
             CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
             CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
 
-            kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeadm-config.yaml")
+            kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeconfig/kubeadm-config.yaml")
             echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
-            echo "#### Creating "${KUBECTL_CONFIGS_DIR}"/kubeconfig to access the master plane"
+            echo "#### Creating ${KUBECTL_CONFIGS_DIR}/kubeconfig to access the master plane"
             #envsubst <"${kubeconfigtemplate}" >"${KUBECTL_CONFIGS_DIR}"/kubeconfig
             evolve_templates "${kubeconfigtemplate}" "${KUBECTL_CONFIGS_DIR}/kubeconfig"
 
@@ -1064,8 +1068,15 @@ provision() {
 }
 
 valid_config() {
-
     local error=0
+
+    K8S_API_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.controlPlaneEndpointUseIP' "config/${CONFIG_FILE}")
+    if [ "x${K8S_API_ENDPOINT_USE_IP}" = "xfalse" ] || [ "x${K8S_API_ENDPOINT_USE_IP}" = "xnull" ]; then
+        K8S_API_ENDPOINT_USE_IP=false
+    else
+        K8S_API_ENDPOINT_USE_IP=true
+    fi
+
     PROJECT_TARGET=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
     if [ "x${PROJECT_TARGET}" = "xnull" ]; then
         PROJECT_TARGET=""
