@@ -183,11 +183,19 @@ The file format as YAML will make it easier to evolve this script with more opti
 
 ```yaml
 config:
-  description: This example project works on clustered LXD.
+  description: "This example project works on clustered LXD.
     But as it uses a NAT network interface, all containers must be in the same
     member of the LXD cluster, otherwise Kubernetes will not be able to
     communicate with the nodes. To do this, I use the target option to specify
-    the LXD member that I need to create containers to be used by Kubernetes.
+    the LXD member that I need to create containers to be used by Kubernetes. 
+    Also, access to Kubernetes does not work from the local network, it only
+    works from the machine on which LXD is installed. Access to Kubernetes must
+    be via IP since the domain configured in the project is internal to the
+    containers. To use the domain we must create a hosts record on the machine
+    where LXD is installed pointing to the master plane IP or add the
+    option controlPlaneEndpointUseIP: true, in the project configuration, as the case
+    may be. With this option, kube config is configured with the IP and not the 
+    domain."
   lxd:
     projectName: ncdc1
     target: terra # cluster members: terra, marte
@@ -196,6 +204,7 @@ config:
     version: 1.22.0
     podSubnet: 10.10.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
+    controlPlaneEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
   instances:
   - instance:
     lxd:
@@ -218,6 +227,7 @@ config:
       profile: k8s-kworker2
     kubernetes:
       type: worker
+
 ```
 
 ## LXD Profiles
