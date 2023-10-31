@@ -2,7 +2,6 @@ set -o xtrace
 
 env
 
-
 # This script has been tested on Ubuntu 18.04, 20.04, 22.04
 # For other versions of Ubuntu, you might need some tweaking
 
@@ -13,7 +12,6 @@ echo "Install containerd runtime"
 apt update -qq
 apt install -qq -y containerd apt-transport-https ca-certificates net-tools curl
 echo return: $?
-
 
 mkdir /etc/containerd >/dev/null
 containerd config default > /etc/containerd/config.toml
@@ -39,4 +37,3 @@ echo 'KUBELET_EXTRA_ARGS="--fail-swap-on=false"' > /etc/default/kubelet
 systemctl restart kubelet
 
 apt autoremove -y
-

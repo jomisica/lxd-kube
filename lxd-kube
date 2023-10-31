@@ -5,6 +5,7 @@ if [ "$EUID" -eq 0 ]; then
     echo "Example: bash lxd-kube"
     exit
 fi
+
 if ! command -v yq &>/dev/null; then
     echo "yq could not be found"
     echo
