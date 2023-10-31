@@ -9,20 +9,22 @@ env
 #Using kubeconfig from this project
 export KUBECONFIG="kubernetes/kubectl-configs/${PROJECT_NAME}/kubeconfig"
 
-
 # We need to have kubectl installed on the machine where this script is
 # running to be able to communicate with the kubernetes cluster of the
 # project in question.
 
 # Wait for all nodes to be ready
-while true; do
+local t=0
+while [ $t -le 300 ]; do
     node_status=$(kubectl get nodes | grep NotReady)
     if [ $? -eq 1 ]; then
         echo "All nodes up..."
         break
     fi
     echo ${node_status}
-    sleep 1;
+    sleep 1
+    sleep 1
+    t=$((t + 1))
 done
 
 # At this moment, the nodes already have the Ready status.
@@ -31,7 +33,6 @@ done
 
 # In this example I just list the list of nodes in wide mode,
 # to be able to see the status.
-
 kubectl get nodes -o wide
 
 exit

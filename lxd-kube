@@ -47,6 +47,7 @@ get_kubernetes_bootstrap_path() {
     fi
     echo "$1"
 }
+
 get_kubernetes_postboot_path() {
     if ! [ -f "$1" ]; then
         echo "kubernetes/postboot/default/postboot.sh"
@@ -72,6 +73,7 @@ get_projects() {
         PROJECTS+=("$string_sem_current")
     done < <(lxc project list --format csv 2>/dev/null)
 }
+
 get_profiles() {
     local fields
     local IFS=,
@@ -80,6 +82,7 @@ get_profiles() {
         PROFILES+=("$prof_name")
     done < <(lxc --project "$1" profile list --format csv 2>/dev/null)
 }
+
 get_containers() {
     local fields
     local IFS=,
@@ -106,6 +109,7 @@ get_images() {
         IMAGES+=("$FINGERPRINT")
     done < <(lxc image list --project "$1" --format csv 2>/dev/null)
 }
+
 get_bridge() {
     local ret
     ret=$(lxc network list --format csv 2>/dev/null | grep "$1" 2>/dev/null)
@@ -593,7 +597,7 @@ export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
 EOF
 
-    cat $(get_kubernetes_postboot_path "kubernetes/postboot/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/postboot.sh")
+    cat $(get_kubernetes_postboot_path "kubernetes/postboot/"${PROJECT_NAME}"/postboot.sh")
 }
 
 evolve_templates() {
@@ -657,7 +661,50 @@ apply_cni_configs() {
 
         echo "##### Applying the ${file_name} template to Kubernetes."
         cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+        if [ $? -eq 0 ]; then
+            echo "###### [OK] The template was applied successfully."
+        else
+            echo "###### [$?] Error applying the template."
+            exit 255
+        fi
     done
+}
+
+apply_others_configs() {
+
+    local others_apply_directory="kubernetes/templates/${PROJECT_NAME}/others/apply"
+    if ! [ -d "${others_apply_directory}" ]; then
+        others_apply_directory="kubernetes/templates/default/others/apply"
+    fi
+    mkdir -p "generated-configs/${others_apply_directory}"
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${others_apply_directory}" -type f 2>/dev/null)
+    local templates_num=$(find "${others_apply_directory}" -type f 2>/dev/null | wc -l)
+
+    if [ ${templates_num} -lt 1 ]; then
+        return 0
+    fi
+    echo "### Applying Others templates to Kubernetes..."
+
+    for TEMPLATE in ${templates}; do
+        local file_name=$(basename ${TEMPLATE})
+
+        #echo ${TEMPLATE}
+
+        echo "#### Processing the ${file_name} template"
+        evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
+
+        echo "#### Applying the ${file_name} template to Kubernetes."
+        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply -f - >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+        if [ $? -eq 0 ]; then
+            echo "##### [OK] The template was applied successfully."
+        else
+            echo "##### [$?] Error applying the template."
+            exit 255
+        fi
+    done
+    echo
 }
 
 provision_kubernetes_cluster() {
@@ -758,7 +805,6 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-
             echo "#### Generating a token in Kubernetes"
             KUBEADM_TOKEN=$(generate_kubernetes_token)
 
@@ -826,7 +872,6 @@ provision_kubernetes_cluster() {
             apply_cni_configs
 
             echo "### END Configuring the master plane: ${INSTANCE_NAME}"
-            echo
         fi
 
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
@@ -902,6 +947,21 @@ provision_kubernetes_cluster() {
         fi
         echo
     done
+
+    # Applying other templates to project xxxxx
+    apply_others_configs
+
+    # This script will run after basic kubernetes boots. With it we can install
+    # and configure one or many applications for a given project. Using the
+    # kubeconfig generated during kubernetes cluster initialization.
+    echo "#### Running the post boot script in project ${PROJECT_NAME}..."
+    build_postboot_payload_content | bash >>"logs/${PROJECT_NAME}/postboot.log" 2>&1
+    if [ $? -eq 0 ]; then
+        echo "##### [OK] The postboot script ran without problems."
+    else
+        echo "##### [$?] An error status was returned when running the postboot script."
+        exit 255
+    fi
 }
 
 copysshkey() {
@@ -951,19 +1011,6 @@ provision() {
     echo -e "## Provisioning Kubernetes clusters\n"
 
     provision_kubernetes_cluster
-
-    # This script will run after basic kubernetes boots. With it we can install
-    # and configure one or many applications for a given project. Using the
-    # kubeconfig generated during kubernetes cluster initialization.
-    echo "#### Running the post boot script in project ${PROJECT_NAME}..."
-    build_postboot_payload_content | bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/postboot.log 2>&1
-    if [ $? -eq 0 ]; then
-        echo "##### [OK] The postboot script ran without problems."
-    else
-        echo "##### [$?] An error status was returned when running the postboot script."
-        exit 255
-    fi
-    
 
     echo -e "## END of Kubernetes cluster provisioning"
     echo -e "\n# END Provisioning Kubernetes Cluster inside LXC containers\n"

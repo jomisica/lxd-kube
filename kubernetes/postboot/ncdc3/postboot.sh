@@ -13,50 +13,22 @@ export KUBECONFIG="kubernetes/kubectl-configs/${PROJECT_NAME}/kubeconfig"
 # project in question.
 
 # Wait for all nodes to be ready
-while true; do
-    node_status=$(kubectl get nodes | grep NotReady)
-    if [ $? -eq 1 ]; then
-        echo "All nodes up..."
-        break
-    fi
-    echo ${node_status}
-    sleep 1
+local t=0
+while [ $t -le 300 ]; do
+  node_status=$(kubectl get nodes | grep NotReady)
+  if [ $? -eq 1 ]; then
+    echo "All nodes up..."
+    break
+  fi
+  echo ${node_status}
+  sleep 1
+  sleep 1
+  t=$((t + 1))
 done
 
 # At this moment, the nodes already have the Ready status.
 # We can install our applications, configure the applications,
 # using kubectl to apply templates, use helm, etc.
-
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: nginx
-  labels:
-    app.kubernetes.io/name: proxy
-spec:
-  containers:
-  - name: nginx
-    image: nginx:stable
-    ports:
-      - containerPort: 80
-        name: http-web-svc
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-service
-spec:
-  type: NodePort
-  selector:
-    app.kubernetes.io/name: proxy
-  ports:
-  - name: name-of-service-port
-    protocol: TCP
-    port: 80
-    targetPort: http-web-svc
-EOF
 
 # get service node port
 nodeport=$(kubectl get service/nginx-service -o yaml | grep 'nodePort: ' | sed -e "s?nodePort: ??")
@@ -74,10 +46,10 @@ response_test=$(curl http://${K8S_MASTER_INSTANCE_IP}:${trimedport} | grep '<h1>
 # response status and others.
 
 if [ $? -eq 0 ]; then
-    echo "[OK] The answer was as expected"
+  echo "[OK] The answer was as expected"
 else
-    echo "[error] The response was not what was intended, the test failed."
-    exit 255
+  echo "[error] The response was not what was intended, the test failed."
+  exit 255
 fi
 
 # We must have and find ways to test our applications in the best way possible.
