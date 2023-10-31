@@ -6,7 +6,7 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
-# Check if we have the brctl command
+# Check if we have the lxd command
 if ! [ -x "$(command -v lxd)" ]; then
     echo "Installing the required lxd-installer package."
     apt update

@@ -57,7 +57,7 @@ CONFIG_NETPLAN_FILE=$(grep -r "${DEFAULT_IF}:" /etc/netplan/ | awk '{sub(/:.*/, 
 # Backup of the current netplan file
 cp "${CONFIG_NETPLAN_FILE}" /root
 
-# resolve temple
+# resolve template
 $(envsubst <lxc/netplan/netplancfg.yaml >"${CONFIG_NETPLAN_FILE}")
 
 # apply netplan configuration
