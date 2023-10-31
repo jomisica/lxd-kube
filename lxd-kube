@@ -560,6 +560,9 @@ export CURRENT_PROFILE_NAME=${CURRENT_PROFILE_NAME};
 export CURRENT_INSTANCE_IMAGE=${CURRENT_INSTANCE_IMAGE};
 export CURRENT_INSTANCE_INDEX=${CURRENT_INSTANCE_INDEX};
 export CURRENT_INSTANCE_IP=${INSTANCE_IP};
+export K8S_MASTER_INSTANCE_NAME=${K8S_MASTER_INSTANCE_NAME};
+export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
+
 EOF
 
     cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh")
@@ -584,6 +587,10 @@ export CURRENT_PROFILE_NAME=${CURRENT_PROFILE_NAME};
 export CURRENT_INSTANCE_IMAGE=${CURRENT_INSTANCE_IMAGE};
 export CURRENT_INSTANCE_INDEX=${CURRENT_INSTANCE_INDEX};
 export CURRENT_INSTANCE_IP=${INSTANCE_IP};
+export K8S_MASTER_INSTANCE_NAME=${K8S_MASTER_INSTANCE_NAME};
+export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
+
+
 EOF
 
     cat $(get_kubernetes_postboot_path "kubernetes/postboot/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/postboot.sh")
@@ -592,6 +599,8 @@ EOF
 evolve_templates() {
 
     sed \
+        -e "s?\${K8S_MASTER_INSTANCE_NAME}?${K8S_MASTER_INSTANCE_NAME}?" \
+        -e "s?\${K8S_MASTER_INSTANCE_IP}?${K8S_MASTER_INSTANCE_IP}?" \
         -e "s?\${CA_CERT_HASH}?${CA_CERT_HASH}?" \
         -e "s?\${CA_DATA_B64}?${CA_DATA_B64}?" \
         -e "s?\${CLIENT_CERT_B64}?${CLIENT_CERT_B64}?" \
@@ -674,6 +683,8 @@ provision_kubernetes_cluster() {
 
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
             K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
+            K8S_MASTER_INSTANCE_IP=${INSTANCE_IP}
+
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
 
             LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
