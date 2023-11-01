@@ -255,7 +255,6 @@ lxc_pause_containers() {
 }
 
 create_lxc_projects() {
-
     local PROJECTS=()
     get_projects
     local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
@@ -480,7 +479,7 @@ delete_lxc_profiles() {
 delete_generated_files() {
 
     rm -fr "kubernetes/kubectl-configs/${PROJECT_NAME}"
-    rm -fr "logs/${PROJECT_NAME}"
+    #rm -fr "logs/${PROJECT_NAME}"
     rm -fr "generated-configs/kubernetes/templates/${PROJECT_NAME}"
     rm -fr "generated-configs/lxc/bridge/${PROJECT_NAME}"
     rm -fr "generated-configs/lxc/profiles/${PROJECT_NAME}"
@@ -563,7 +562,7 @@ export CURRENT_INSTANCE_TYPE=${CURRENT_INSTANCE_TYPE};
 export CURRENT_PROFILE_NAME=${CURRENT_PROFILE_NAME};
 export CURRENT_INSTANCE_IMAGE=${CURRENT_INSTANCE_IMAGE};
 export CURRENT_INSTANCE_INDEX=${CURRENT_INSTANCE_INDEX};
-export CURRENT_INSTANCE_IP=${INSTANCE_IP};
+export CURRENT_INSTANCE_IP=${CURRENT_INSTANCE_IP};
 export K8S_MASTER_INSTANCE_NAME=${K8S_MASTER_INSTANCE_NAME};
 export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
@@ -590,7 +589,7 @@ export CURRENT_INSTANCE_TYPE=${CURRENT_INSTANCE_TYPE};
 export CURRENT_PROFILE_NAME=${CURRENT_PROFILE_NAME};
 export CURRENT_INSTANCE_IMAGE=${CURRENT_INSTANCE_IMAGE};
 export CURRENT_INSTANCE_INDEX=${CURRENT_INSTANCE_INDEX};
-export CURRENT_INSTANCE_IP=${INSTANCE_IP};
+export CURRENT_INSTANCE_IP=${CURRENT_INSTANCE_IP};
 export K8S_MASTER_INSTANCE_NAME=${K8S_MASTER_INSTANCE_NAME};
 export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
@@ -626,7 +625,7 @@ evolve_templates() {
         -e "s/\${CURRENT_PROFILE_NAME}/${CURRENT_PROFILE_NAME}/" \
         -e "s/\${CURRENT_INSTANCE_IMAGE}/${CURRENT_INSTANCE_IMAGE}/" \
         -e "s/\${CURRENT_INSTANCE_INDEX}/${CURRENT_INSTANCE_INDEX}/" \
-        -e "s/\${INSTANCE_IP}/${INSTANCE_IP}/" "$1" >"$2"
+        -e "s/\${CURRENT_INSTANCE_IP}/${CURRENT_INSTANCE_IP}/" "$1" >"$2"
 
     return $?
 
@@ -707,7 +706,45 @@ apply_others_configs() {
     echo
 }
 
+create_project_log_dir() {
+    PROJECT_LOG_DIR="logs/${PROJECT_NAME}"
+    echo "#### Creating the ${PROJECT_LOG_DIR} directory for logs"
+    mkdir -p "${PROJECT_LOG_DIR}"
+    if [ $? -eq 0 ]; then
+        echo "##### [OK] The ${PROJECT_LOG_DIR} directory for the logs has been created"
+    else
+        echo "##### [$?] Error creating ddd directory for logs"
+        exit 255
+    fi
+}
+create_instance_log_dir() {
+
+    echo "#### Creating the logs/${PROJECT_NAME}/{${1}} directory for logs"
+    eval "mkdir -p logs/${PROJECT_NAME}/{${1}}"
+    if [ $? -eq 0 ]; then
+        echo "##### [OK] The logs/${PROJECT_NAME}/{${1}} directory for the logs has been created"
+    else
+        echo "##### [$?] Error creating ddd directory for logs"
+        exit 255
+    fi
+}
+
+create_generated_dirs() {
+    GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}"
+    echo "### Creating the ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes"
+    mkdir -p ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others}
+    if [ $? -eq 0 ]; then
+        echo "##### [OK] The ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes has been created"
+    else
+        echo "##### [$?] Error creating ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes"
+        exit 255
+    fi
+    echo
+}
+
 provision_kubernetes_cluster() {
+
+    create_generated_dirs
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
@@ -720,35 +757,27 @@ provision_kubernetes_cluster() {
         CURRENT_INSTANCE_INDEX=${i}
         CURRENT_PROFILE_NAME=${PROFILE_NAME}
         CURRENT_INSTANCE_IMAGE=${INSTANCE_IMAGE}
-        INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        CURRENT_INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        INSTANCE_LOG_DIR=logs/${PROJECT_NAME}/${INSTANCE_NAME}
+
+
 
         K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
-
         if [ ${K8S_KUBE_CONFIG_ENDPOINT_USE_IP} = true ]; then
-            K8S_API_ENDPOINT=${INSTANCE_IP}
+            K8S_API_ENDPOINT=${CURRENT_INSTANCE_IP}
         fi
 
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
             K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
-            K8S_MASTER_INSTANCE_IP=${INSTANCE_IP}
+            K8S_MASTER_INSTANCE_IP=${CURRENT_INSTANCE_IP}
 
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
-
-            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
-            echo "#### Creating the ${LOG_DIR} directory for logs"
-            mkdir -p "${LOG_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for logs"
-                exit 255
-            fi
 
             local master_node_joined=
             master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
             local node_exists=$?
             local worker_stat=
-            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
             if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
                 echo "#### [OK] The master plane has already successfully initialized"
                 echo "### END Configuring the master plane: ${INSTANCE_NAME}"
@@ -765,11 +794,11 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Resolving the master plane domain: ${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}"
-            echo "nslookup '${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}' | grep 'Address:' | grep '${INSTANCE_IP}'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            echo "nslookup '${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}' | grep 'Address:' | grep '${CURRENT_INSTANCE_IP}'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" bash >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
             if [ $? -eq 0 ]; then
-                echo "##### It is possible to resolve the domain to the machine's IP:" ${INSTANCE_IP}
+                echo "##### It is possible to resolve the domain to the machine's IP:" ${CURRENT_INSTANCE_IP}
             else
-                echo "##### Unable to resolve the domain to the machine's IP: " ${INSTANCE_IP}
+                echo "##### Unable to resolve the domain to the machine's IP: " ${CURRENT_INSTANCE_IP}
                 exit 255
             fi
 
@@ -783,21 +812,11 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}"
-            echo "#### Creating the ${GENERATED_CONFIGS_DIR} directory for the generated config files to kubernetes"
-            mkdir -p "${GENERATED_CONFIGS_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${GENERATED_CONFIGS_DIR} directory for the generated config files to kubernetes has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for the generated config files to kubernetes"
-                exit 255
-            fi
-
             TEMPLATE_DIR=kubernetes/templates/"${PROJECT_NAME}"
 
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
             #echo "export K8S_VERSION=${K8S_VERSION}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh"))" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
-            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/bootstrap.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The required software has been installed"
             else
@@ -810,7 +829,6 @@ provision_kubernetes_cluster() {
 
             kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/init/kubeadm-init-config.yaml")
             echo "#### Processing the ${kadminittemplate} template"
-            mkdir -p "${GENERATED_CONFIGS_DIR}/init/"
             evolve_templates "${kadminittemplate}" "${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The "${kadminittemplate}" template was processed successfully"
@@ -829,7 +847,7 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Download the Kubernetes base images"
-            echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+            echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The images were downloaded successfully"
             else
@@ -838,7 +856,7 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Initializing the master plane"
-            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The master plane has been successfully initialized"
             else
@@ -858,7 +876,6 @@ provision_kubernetes_cluster() {
             echo "#### Creating ${KUBECTL_CONFIGS_DIR}/kubeconfig to access the master plane"
             evolve_templates "${kubeconfigtemplate}" "${KUBECTL_CONFIGS_DIR}/kubeconfig"
 
-            mkdir -p "${GENERATED_CONFIGS_DIR}/join/"
             kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-config.yaml")
             echo "#### Processing the ${kadmjointemplate} template to join workers"
             evolve_templates "${kadmjointemplate}" "${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
@@ -876,20 +893,12 @@ provision_kubernetes_cluster() {
 
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
             echo "### Configuring the worker: ${INSTANCE_NAME}"
-            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"
-            echo "#### Creating the ${LOG_DIR} directory for logs"
-            mkdir -p "${LOG_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for logs"
-                exit 255
-            fi
-            local master_node_joined=
+
+            local master_node_joined=""
             master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
             local node_exists=$?
-            local worker_stat=
-            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            local worker_stat=""
+            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
             if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
                 echo "#### [OK] The worker has already successfully joinedy"
                 echo "### END Configuring the worker: ${INSTANCE_NAME}"
@@ -905,18 +914,8 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            LOG_DIR=logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/
-            echo "#### Creating the ${LOG_DIR} directory for logs"
-            mkdir -p "${LOG_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${LOG_DIR} directory for the logs has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for logs"
-                exit 255
-            fi
-
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
-            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
+            build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/bootstrap.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The required software has been installed"
             else
@@ -924,10 +923,8 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}/join"
-
-            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
-            lxc --project "${PROJECT_NAME}" file push -p ${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0
+            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
+            lxc --project "${PROJECT_NAME}" file push -p "${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
@@ -936,7 +933,7 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Joining the worker to the cluster"
-            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 join --config /root/kubeadm-join-config.yaml --ignore-preflight-errors=all >logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadmjoin.log 2>&1
+            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 join --config /root/kubeadm-join-config.yaml --ignore-preflight-errors=all >>"${INSTANCE_LOG_DIR}/kubeadmjoin.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The worker has been successfully joined"
             else
@@ -962,6 +959,7 @@ provision_kubernetes_cluster() {
         echo "##### [$?] An error status was returned when running the postboot script."
         exit 255
     fi
+    echo
 }
 
 copysshkey() {
@@ -1119,6 +1117,7 @@ valid_config() {
         echo error
         exit 255
     fi
+
 }
 
 parse_options() {
@@ -1177,6 +1176,10 @@ valid_config
 
 case "$1" in
 provision)
+    # Create Project log directory
+    #create_project_log_dir
+    # Create project instance directory
+    create_instance_log_dir "${PROJECT_INSTANCES_NAME}"
     provision
     ;;
 destroy)

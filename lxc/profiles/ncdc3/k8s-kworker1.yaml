@@ -1,10 +1,10 @@
 config:
-  limits.memory: 4GB
+  limits.memory: 2GB
   limits.cpu: 1,2
   #limits.cpu: "2"
   #limits.cpu: 0-3
-  #limits.cpu.allowance: 30%
-  #limits.cpu.priority: 5
+  limits.cpu.allowance: 30%
+  limits.cpu.priority: 5
   #limits.cpu.allowance: 50ms/200ms
   limits.memory.swap: "false"
   linux.kernel_modules: ip_tables,ip6_tables,nf_nat,overlay,br_netfilter
