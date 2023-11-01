@@ -675,17 +675,11 @@ apply_cni_configs() {
 
 wait_phase() {
     sleep 5
-    #kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l
     local t=0
     while [ $t -le ${MAX_WAIT_SECOUNDS} ]; do
-        #echo "${K8S_MASTER_INSTANCE_NAME}"
-        #echo "${PROJECT_NAME}"
-        local master_node_joined=""
-        master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
-        #echo "${master_node_joined}"
-        if [ $master_node_joined -eq 1 ]; then
-            #echo "#### [OK] ###### all ready"
-            #echo
+        local wait_pods_running=""
+        wait_pods_running=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
+        if [ $wait_pods_running -eq 1 ]; then
             break
         fi
         sleep 1
