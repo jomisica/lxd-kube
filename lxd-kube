@@ -644,7 +644,7 @@ apply_cni_configs() {
     mkdir -p "generated-configs/${cni_directory}"
 
     local IFS=$(echo -en "\n\b")
-    local templates=$(find "${cni_directory}" -type f 2>/dev/null)
+    local templates=$(find "${cni_directory}" -type f | sort 2>/dev/null)
     local templates_num=$(find "${cni_directory}" -type f 2>/dev/null | wc -l)
 
     if [ ${templates_num} -lt 1 ]; then
@@ -654,6 +654,9 @@ apply_cni_configs() {
 
     for TEMPLATE in ${templates}; do
         local file_name=$(basename ${TEMPLATE})
+
+        sleep 10
+        wait_phase
 
         echo "##### Processing the ${file_name} template"
         evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
@@ -669,6 +672,26 @@ apply_cni_configs() {
     done
 }
 
+wait_phase() {
+    #kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l
+    local t=0
+    while [ $t -le 3000 ]; do
+        #echo "${K8S_MASTER_INSTANCE_NAME}"
+        #echo "${PROJECT_NAME}"
+        local master_node_joined=""
+        master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
+        #echo "${master_node_joined}"
+        if [ $master_node_joined -eq 1 ]; then
+            #echo "#### [OK] ###### all ready"
+            #echo
+            break
+        fi
+        sleep 2
+        t=$((t + 1))
+    done
+
+}
+
 apply_others_configs() {
 
     local others_apply_directory="kubernetes/templates/${PROJECT_NAME}/others/apply"
@@ -678,7 +701,7 @@ apply_others_configs() {
     mkdir -p "generated-configs/${others_apply_directory}"
 
     local IFS=$(echo -en "\n\b")
-    local templates=$(find "${others_apply_directory}" -type f 2>/dev/null)
+    local templates=$(find "${others_apply_directory}" -type f | sort 2>/dev/null)
     local templates_num=$(find "${others_apply_directory}" -type f 2>/dev/null | wc -l)
 
     if [ ${templates_num} -lt 1 ]; then
@@ -688,6 +711,9 @@ apply_others_configs() {
 
     for TEMPLATE in ${templates}; do
         local file_name=$(basename ${TEMPLATE})
+
+        sleep 10
+        wait_phase
 
         #echo ${TEMPLATE}
 
@@ -702,6 +728,7 @@ apply_others_configs() {
             echo "##### [$?] Error applying the template."
             exit 255
         fi
+
     done
     echo
 }
@@ -719,14 +746,15 @@ create_project_log_dir() {
 }
 create_instance_log_dir() {
 
-    echo "#### Creating the logs/${PROJECT_NAME}/{${1}} directory for logs"
+    echo "## Creating the logs/${PROJECT_NAME}/{${1}} directory for logs"
     eval "mkdir -p logs/${PROJECT_NAME}/{${1}}"
     if [ $? -eq 0 ]; then
-        echo "##### [OK] The logs/${PROJECT_NAME}/{${1}} directory for the logs has been created"
+        echo "### [OK] The logs/${PROJECT_NAME}/{${1}} directory for the logs has been created"
     else
-        echo "##### [$?] Error creating ddd directory for logs"
+        echo "### [$?] Error creating ddd directory for logs"
         exit 255
     fi
+    echo
 }
 
 create_generated_dirs() {
@@ -759,8 +787,6 @@ provision_kubernetes_cluster() {
         CURRENT_INSTANCE_IMAGE=${INSTANCE_IMAGE}
         CURRENT_INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
         INSTANCE_LOG_DIR=logs/${PROJECT_NAME}/${INSTANCE_NAME}
-
-
 
         K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
         if [ ${K8S_KUBE_CONFIG_ENDPOINT_USE_IP} = true ]; then
@@ -992,6 +1018,9 @@ copysshkey() {
 provision() {
     echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
 
+    # Create project instance directory
+    create_instance_log_dir "${PROJECT_INSTANCES_NAME}"
+
     echo -e "## Provisioning LXC containers\n"
 
     create_lxc_projects
@@ -1176,10 +1205,6 @@ valid_config
 
 case "$1" in
 provision)
-    # Create Project log directory
-    #create_project_log_dir
-    # Create project instance directory
-    create_instance_log_dir "${PROJECT_INSTANCES_NAME}"
     provision
     ;;
 destroy)

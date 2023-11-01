@@ -11,13 +11,18 @@ config:
     where LXD is installed pointing to the master plane IP or add the
     option KubeConfigEndpointUseIP: true, in the project configuration, as the case
     may be. With this option, kube config is configured with the IP and not the 
-    domain."
+    domain.
+    This example project uses MetalLB to allow the creation of LoadBalancres
+    in Kubernetes with an external IP. For this to be possible we must define
+    the DHCP range on the project bridge, in order to reserve some IPs for
+    MetalLB to use to assign to LoadBalancers. And configure the MetalLB
+    IP poll accordingly."
   lxd:
     projectName: ncdc3
     target: terra # cluster members: terra, marte
   kubernetes:
     clusterName: ncdc3
-    version: 1.22.0
+    version: 1.22.2
     podSubnet: 10.5.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
     KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
