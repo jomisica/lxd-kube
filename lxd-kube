@@ -373,8 +373,10 @@ create_lxc_instances() {
 
     local target=""
 
-    if ! [ -z "${PROJECT_TARGET}" ]; then
-        target=" --target=${PROJECT_TARGET}"
+    if is_cluster; then
+        if ! [ -z "${PROJECT_TARGET}" ]; then
+            target=" --target=${PROJECT_TARGET}"
+        fi
     fi
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
