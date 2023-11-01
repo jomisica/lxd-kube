@@ -7,7 +7,5 @@ kubernetes/kubectl-configs
 generated-configs
 lxc/generated-configs
 test.sh
-#lxd-kube-ya
-#config/default.yaml
 old
 config/old
