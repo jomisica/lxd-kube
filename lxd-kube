@@ -195,7 +195,7 @@ lxc_stop_containers() {
     echo -e "\n## Stopping project instances...\n"
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         echo "### Stopping container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") != "STOPPED" ]; then
@@ -216,7 +216,7 @@ lxc_start_containers() {
     echo -e "\n## Starting project instances...\n"
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         echo "### Starting the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         local stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
@@ -238,7 +238,7 @@ lxc_pause_containers() {
     echo -e "\n## Pausing project instances...\n"
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         echo "### Pausing the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") = "RUNNING" ]; then
@@ -258,7 +258,7 @@ lxc_pause_containers() {
 create_lxc_projects() {
     local PROJECTS=()
     get_projects
-    local PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    local PROJECT_NAME=$(yq e '.config.lxd.projectName' "${CONFIG_FILE}")
     echo "### Creating the '${PROJECT_NAME}' project in LXC."
     if ! is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
         lxc project create "${PROJECT_NAME}"
@@ -275,18 +275,6 @@ create_lxc_projects() {
 }
 
 create_lxc_bridges() {
-    #if ! is_cluster; then
-
-    #local PROJECT_NAME=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
-    #local INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
-    #local K8S_API_ENDPOINT=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "config/${CONFIG_FILE}")
-
-    #lxc --project ncdc network create ncdc-lxdbr --target=terra
-    #lxc --project ncdc network create ncdc-lxdbr --target=lxdn1
-    #lxc --project ncdc network create ncdc-lxdbr
-    #lxc --project ncdc network edit ncdc-lxdbr
-    #lxc --project ncdc network edit ncdc-lxdbr < generated-configs/lxc/bridge/ncdc/bridge.yaml
-    #lxc --project ncdc network show ncdc-lxdbr
     if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
         return
     fi
@@ -323,7 +311,7 @@ create_lxc_bridges() {
 
     mkdir -p generated-configs/lxc/bridge/"${PROJECT_NAME}"
     evolve_templates "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml"
-    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-br < <(cat generated-configs/lxc/bridge/"${PROJECT_NAME}"/bridge.yaml)
+    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-br < <(cat "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml")
 
     if [ $? -eq 0 ]; then
         echo "#### [OK] Bridge edited"
@@ -337,7 +325,7 @@ create_lxc_bridges() {
 create_lxc_profiles() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
 
         local PROFILES=()
         get_profiles "${PROJECT_NAME}"
@@ -381,9 +369,9 @@ create_lxc_instances() {
     fi
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
-        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
 
         CONTAINERS=()
         get_containers "${PROJECT_NAME}"
@@ -437,7 +425,7 @@ delete_lxc_bridges() {
     if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
         return
     fi
-    echo "### Deleting bridge "${PROJECT_NAME}"-br in project '${PROJECT_NAME}'."
+    echo "### Deleting bridge ${PROJECT_NAME}-br in project '${PROJECT_NAME}'."
     if get_bridge "${PROJECT_NAME}"-br; then
         lxc network delete "${PROJECT_NAME}"-br
         if [ $? -eq 0 ]; then
@@ -456,9 +444,9 @@ delete_lxc_bridges() {
 delete_lxc_profiles() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
-        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
 
         local PROFILES=()
         get_profiles "${PROJECT_NAME}"
@@ -524,9 +512,9 @@ destroy() {
 destroyinstances() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
-        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
 
         CONTAINERS=()
         get_containers "${PROJECT_NAME}"
@@ -571,7 +559,7 @@ export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
 EOF
 
-    cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh")
+    cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/${PROJECT_NAME}/${INSTANCE_NAME}/bootstrap.sh")
 }
 
 build_postboot_payload_content() {
@@ -599,7 +587,7 @@ export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
 EOF
 
-    cat $(get_kubernetes_postboot_path "kubernetes/postboot/"${PROJECT_NAME}"/postboot.sh")
+    cat $(get_kubernetes_postboot_path "kubernetes/postboot/${PROJECT_NAME}/postboot.sh")
 }
 
 evolve_templates() {
@@ -663,7 +651,7 @@ apply_cni_configs() {
         evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
 
         echo "##### Applying the ${file_name} template to Kubernetes."
-        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/kubeadminit.log 2>&1
+        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "###### [OK] The template was applied successfully."
         else
@@ -770,10 +758,10 @@ provision_kubernetes_cluster() {
     create_generated_dirs
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
-        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
-        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
 
         CURRENT_INSTANCE_NAME=${INSTANCE_NAME}
         CURRENT_INSTANCE_TYPE=${INSTANCE_TYPE}
@@ -836,7 +824,6 @@ provision_kubernetes_cluster() {
             TEMPLATE_DIR=kubernetes/templates/"${PROJECT_NAME}"
 
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
-            #echo "export K8S_VERSION=${K8S_VERSION}; $(cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/bootstrap.sh"))" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>logs/"${PROJECT_NAME}"/"${INSTANCE_NAME}"/install.log 2>&1
             build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/bootstrap.log" 2>&1
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The required software has been installed"
@@ -986,8 +973,8 @@ provision_kubernetes_cluster() {
 copysshkey() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         local PROJECTS=()
         get_projects
@@ -1042,44 +1029,44 @@ provision() {
 valid_config() {
     local error=0
 
-    K8S_KUBE_CONFIG_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.KubeConfigEndpointUseIP' "config/${CONFIG_FILE}")
+    K8S_KUBE_CONFIG_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.KubeConfigEndpointUseIP' "${CONFIG_FILE}")
     if [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xfalse" ] || [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xnull" ]; then
         K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
     else
         K8S_KUBE_CONFIG_ENDPOINT_USE_IP=true
     fi
 
-    PROJECT_TARGET=$(yq e '.config.lxd.target' "config/${CONFIG_FILE}")
+    PROJECT_TARGET=$(yq e '.config.lxd.target' "${CONFIG_FILE}")
     if [ "x${PROJECT_TARGET}" = "xnull" ]; then
         PROJECT_TARGET=""
     fi
 
-    PROJECT_NAME=$(yq e '.config.lxd.projectName' "config/${CONFIG_FILE}")
+    PROJECT_NAME=$(yq e '.config.lxd.projectName' "${CONFIG_FILE}")
     if [ -z ${PROJECT_NAME} ]; then
         error=$((error + $?))
     fi
     error=$((error + $?))
-    INSTANCES_LENGTH=$(yq e '.config.instances | length' "config/${CONFIG_FILE}")
+    INSTANCES_LENGTH=$(yq e '.config.instances | length' "${CONFIG_FILE}")
     if [ -z ${INSTANCES_LENGTH} ]; then
         error=$((error + $?))
     fi
     error=$((error + $?))
-    K8S_VERSION=$(yq e ".config.kubernetes.version" "config/${CONFIG_FILE}")
+    K8S_VERSION=$(yq e ".config.kubernetes.version" "${CONFIG_FILE}")
     if [ -z ${K8S_VERSION} ]; then
         error=$((error + $?))
     fi
     error=$((error + $?))
-    K8S_API_ENDPOINT_DOMAIN=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "config/${CONFIG_FILE}")
+    K8S_API_ENDPOINT_DOMAIN=$(yq e '.config.kubernetes.controlPlaneEndpointDomain' "${CONFIG_FILE}")
     if [ -z ${K8S_API_ENDPOINT_DOMAIN} ]; then
         error=$((error + $?))
     fi
     error=$((error + $?))
-    K8S_CLUSTER_NAME=$(yq e '.config.kubernetes.clusterName' "config/${CONFIG_FILE}")
+    K8S_CLUSTER_NAME=$(yq e '.config.kubernetes.clusterName' "${CONFIG_FILE}")
     if [ -z ${K8S_CLUSTER_NAME} ]; then
         error=$((error + $?))
     fi
     error=$((error + $?))
-    K8S_POD_SUBNET=$(yq e '.config.kubernetes.podSubnet' "config/${CONFIG_FILE}")
+    K8S_POD_SUBNET=$(yq e '.config.kubernetes.podSubnet' "${CONFIG_FILE}")
     if [ -z ${K8S_POD_SUBNET} ]; then
         error=$((error + $?))
     fi
@@ -1091,7 +1078,7 @@ valid_config() {
     local PROJECT_INSTANCE_TYPE_TMP=""
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
-        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "config/${CONFIG_FILE}")
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
         if [ -z ${PROFILE_NAME} ]; then
             error=$((error + $?))
         fi
@@ -1101,7 +1088,7 @@ valid_config() {
             PROJECT_PROFILES_TMP=${PROJECT_PROFILES_TMP},
         fi
 
-        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "config/${CONFIG_FILE}")
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         if [ -z ${PROJECT_NAME} ]; then
             error=$((error + $?))
         fi
@@ -1111,7 +1098,7 @@ valid_config() {
             PROJECT_INSTANCES_NAME_TMP=${PROJECT_INSTANCES_NAME_TMP},
         fi
 
-        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "config/${CONFIG_FILE}")
+        local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
         if [ -z ${INSTANCE_IMAGE} ]; then
             error=$((error + $?))
         fi
@@ -1121,7 +1108,7 @@ valid_config() {
         fi
 
         error=$((error + $?))
-        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "config/${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
         if [ -z ${INSTANCE_TYPE} ]; then
             error=$((error + $?))
         fi
@@ -1164,7 +1151,7 @@ parse_options() {
             config)
                 val="${!OPTIND}"
                 OPTIND=$(($OPTIND + 1))
-                CONFIG_FILE="${val}"
+                CONFIG_FILE=config/"${val}"
                 ;;
             config=*)
                 val=${OPTARG#*=}
@@ -1191,7 +1178,7 @@ parse_options() {
 
 parse_options "$@"
 
-if ! [ -f "config/${CONFIG_FILE}" ]; then
+if ! [ -f "${CONFIG_FILE}" ]; then
     usage
     exit
 fi
