@@ -1,5 +1,0 @@
-LXD_PROJECT,LXD_PROFILE,LXD_CONTAINER_NAME/HOSTNAME,LXC_CONTAINER_IMAGE,K8S_TYPE,K8S_API_ENDPOINT_DOMAIN,K8S_CLUSTER_NAME,K8S_POD_SUBNET,K8S_VERSION,
-
-test,k8s-kmaster,test-kmaster, ubuntu:22.04,master,test.pt,test,10.10.0.0/16,1.22.0,
-test,k8s-kworker1,test-kworker1, ubuntu:22.04,worker,,,,1.22.0,
-test,k8s-kworker2,test-kworker2, ubuntu:22.04,worker,,,,1.22.0,
