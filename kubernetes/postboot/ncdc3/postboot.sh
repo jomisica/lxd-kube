@@ -30,16 +30,16 @@ done
 # We can install our applications, configure the applications,
 # using kubectl to apply templates, use helm, etc.
 
-# get service node port
-nodeport=$(kubectl get service/nginx-service -o yaml | grep 'nodePort: ' | sed -e "s?nodePort: ??")
-trimedport=$(echo "${nodeport}" | tr -d '\n\r[:space:]')
+# get loadbalancer external ip
+load_balancer_external_ip=$(kubectl get service/nginx-service -o yaml | grep '\- ip: ' | sed -e "s?- ip: ??")
+load_balancer_external_ip=$(echo "${load_balancer_external_ip}" | tr -d '\n\r[:space:]')
 
 # We have found a way to test the status of the service.
 # In this case sleep 30 seconds or more
 sleep 30
 
 # call service
-response_test=$(curl http://${K8S_MASTER_INSTANCE_IP}:${trimedport} | grep '<h1>Welcome to nginx!</h1>')
+response_test=$(curl http://${load_balancer_external_ip} | grep '<h1>Welcome to nginx!</h1>')
 
 # We test whether the answer, for example, has text, in this example.
 # However, we must use more effective methods for testing,

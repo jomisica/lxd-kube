@@ -20,6 +20,7 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
+MAX_WAIT_SECOUNDS=360
 K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
 DELETE_GENERATED=false
 FORCE=false
@@ -656,8 +657,6 @@ apply_cni_configs() {
 
     for TEMPLATE in ${templates}; do
         local file_name=$(basename ${TEMPLATE})
-
-        sleep 10
         wait_phase
 
         echo "##### Processing the ${file_name} template"
@@ -675,9 +674,10 @@ apply_cni_configs() {
 }
 
 wait_phase() {
+    sleep 5
     #kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l
     local t=0
-    while [ $t -le 3000 ]; do
+    while [ $t -le ${MAX_WAIT_SECOUNDS} ]; do
         #echo "${K8S_MASTER_INSTANCE_NAME}"
         #echo "${PROJECT_NAME}"
         local master_node_joined=""
@@ -688,10 +688,9 @@ wait_phase() {
             #echo
             break
         fi
-        sleep 2
+        sleep 1
         t=$((t + 1))
     done
-
 }
 
 apply_others_configs() {
@@ -714,7 +713,6 @@ apply_others_configs() {
     for TEMPLATE in ${templates}; do
         local file_name=$(basename ${TEMPLATE})
 
-        sleep 10
         wait_phase
 
         #echo ${TEMPLATE}
@@ -732,6 +730,7 @@ apply_others_configs() {
         fi
 
     done
+        wait_phase
     echo
 }
 
