@@ -26,20 +26,20 @@ config:
     lxd:
       name: ncdc1-kmaster
       image: ubuntu:22.04
-      profile: k8s-kmaster
+      profile: ncdc2-kmaster
     kubernetes:
       type: master
   - instance:
     lxd:
       name: ncdc1-kworker1
       image: ubuntu:22.04
-      profile: k8s-kworker1
+      profile: ncdc2-kworker1
     kubernetes:
       type: worker
   - instance:
     lxd:
       name: ncdc1-kworker2
       image: ubuntu:22.04
-      profile: k8s-kworker2
+      profile: ncdc2-kworker2
     kubernetes:
       type: worker

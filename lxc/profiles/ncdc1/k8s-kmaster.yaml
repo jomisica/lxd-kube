@@ -23,5 +23,5 @@ devices:
     path: /
     pool: default
     type: disk
-name: k8s-kmaster
+name: ${PROJECT_NAME}-kmaster
 used_by: []

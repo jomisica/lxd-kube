@@ -23,5 +23,5 @@ devices:
     path: /
     pool: default
     type: disk
-name: k8s-kworker2
+name: ${PROJECT_NAME}-kworker2
 used_by: []

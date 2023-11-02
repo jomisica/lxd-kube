@@ -1,5 +1,6 @@
 config:
   limits.memory: 2GB
+  limits.memory.enforce: hard # values hard/soft
   limits.cpu: 1,2
   #limits.cpu: "2"
   #limits.cpu: 0-3
@@ -15,7 +16,7 @@ description: LXD profile for Kubernetes
 devices:
   eth0:
     name: eth0
-    hwaddr: 00:16:3e:00:00:01
+    hwaddr: 00:16:3e:00:00:03
     nictype: bridged
     parent: ${PROJECT_NAME}-br
     type: nic
@@ -23,5 +24,5 @@ devices:
     path: /
     pool: default
     type: disk
-name: k8s-kmaster
+name: ${PROJECT_NAME}-kworker2
 used_by: []
