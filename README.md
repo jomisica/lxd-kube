@@ -83,12 +83,12 @@ This is the file tree that is involved in this example project that comes with t
         │       ├── kubeconfig
         │       │   └── kubeadm-config.yaml
         │       └── others
-        │           ├── apply
-        │           │   ├── 000-cool-app.yaml
-        │           │   ├── 001-colol-app-service.yaml
-        │           │   ├── 003-metallb-native.yaml
-        │           │   ├── 004-metallb-ip-address-pool.yaml
-        │           │   └── 005-metallb-l2-advertisement.yaml
+        │           └── apply
+        │               ├── 000-cool-app.yaml
+        │               ├── 001-colol-app-service.yaml
+        │               ├── 003-metallb-native.yaml
+        │               ├── 004-metallb-ip-address-pool.yaml
+        │               └── 005-metallb-l2-advertisement.yaml
         └── lxc
             ├── bridge
             │   └── bridge.yaml
