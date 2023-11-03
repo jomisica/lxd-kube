@@ -40,67 +40,72 @@ This is the file tree that is involved in this example project that comes with t
 
 ```shell
 ├── config
-│   └── ncdc1.yaml
-├── generated-configs
-│   ├── kubernetes
-│   │   └── templates
-│   │       ├── ncdc1
-│   │           ├── cni
-│   │           │   ├── 000-install-calito-operator.yaml
-│   │           │   └── 001-calito-custom resource.yaml
-│   │           ├── init
-│   │           │   └── kubeadm-init-config.yaml
-│   │           └── join
-│   │               └── kubeadm-join-config.yaml
-│   └── lxc
-│       ├── bridge
-│       │   └── ncdc1
-│       │   │   └── bridge.yaml
-│       └── profiles
-│           └── ncdc1
-│               ├── k8s-kmaster.yaml
-│               ├── k8s-kworker1.yaml
-│               └── k8s-kworker2.yaml
-├── kubernetes
-│   ├── bootstrap
-│   │   └── default
-│   │       └── bootstrap.sh
-│   ├── kubectl-configs
-│   │   └── ncdc1
-│   │       └── kubeconfig
-│   └── templates
-│       └── ncdc1
-│           ├── cni
-│           │   ├── 000-install-calito-operator.yaml
-│           │   └── 001-calito-custom resource.yaml
-│           ├── csi
-│           ├── init
-│           │   └── kubeadm-init-config.yaml
-│           ├── join
-│           │   └── kubeadm-join-config.yaml
-│           └── kubeconfig
-│               └── kubeadm-config.yaml
-├── logs
-│   └── ncdc1
-│       ├── ncdc1-kmaster
-│       │   ├── install.log
-│       │   └── kubeadminit.log
-│       ├── ncdc1-kworker1
-│       │   ├── install.log
-│       │   └── kubeadmjoin.log
-│       └── ncdc1-kworker2
-│           ├── install.log
-│           └── kubeadmjoin.log
-├── lxc
-│   ├── lxdbridge
-│   │   └── ncdc1
-│   │      └── bridge.yaml
-│   └── profiles
-│       └── ncdc1
-│           ├── k8s-kmaster.yaml
-│           ├── k8s-kworker1.yaml
-│           └── k8s-kworker2.yaml
-└── lxd-kube
+│   └── ncdc3.yaml
+│
+├── lxd-kube
+│
+└── projects
+    └── ncdc3
+        ├── kubernetes
+        │   ├── bootstrap
+        │   │   ├── ncdc3-kmaster.sh
+        │   │   ├── ncdc3-kworker1.sh
+        │   │   └── ncdc3-kworker2.sh
+        │   ├── generated-configs
+        │   │   ├── cni
+        │   │   │   └── 000-flannel.yaml
+        │   │   ├── csi
+        │   │   ├── init
+        │   │   │   └── kubeadm-init-config.yaml
+        │   │   ├── join
+        │   │   │   └── kubeadm-join-config.yaml
+        │   │   └── others
+        │   │       └── apply
+        │   │           ├── 000-cool-app.yaml
+        │   │           ├── 001-colol-app-service.yaml
+        │   │           ├── 003-metallb-native.yaml
+        │   │           ├── 004-metallb-ip-address-pool.yaml
+        │   │           └── 005-metallb-l2-advertisement.yaml
+        │   │       
+        │   ├── kubeconfig
+        │   │   └── config
+        │   ├── postboot
+        │   │   └── postboot.sh
+        │   └── templates
+        │       ├── cni
+        │       │   └── 000-flannel.yaml
+        │       ├── csi
+        │       │   └── later
+        │       ├── init
+        │       │   └── kubeadm-init-config.yaml
+        │       ├── join
+        │       │   └── kubeadm-join-config.yaml
+        │       ├── kubeconfig
+        │       │   └── kubeadm-config.yaml
+        │       └── others
+        │           ├── apply
+        │           │   ├── 000-cool-app.yaml
+        │           │   ├── 001-colol-app-service.yaml
+        │           │   ├── 003-metallb-native.yaml
+        │           │   ├── 004-metallb-ip-address-pool.yaml
+        │           │   └── 005-metallb-l2-advertisement.yaml
+        │           ├── delete
+        │           └── replace
+        └── lxc
+            ├── bridge
+            │   └── bridge.yaml
+            ├── generated-configs
+            │   ├── bridge
+            │   │   └── bridge.yaml
+            │   └── profiles
+            │       ├── ncdc3-kmaster.yaml
+            │       ├── ncdc3-kworker1.yaml
+            │       └── ncdc3-kworker2.yaml
+            └── profiles
+                ├── ncdc3-kmaster.yaml
+                ├── ncdc3-kworker1.yaml
+                └── ncdc3-kworker2.yaml
+
 ```
 
 Start by creating the existing project in the configuration file in LXD, so that within this project there may be associated (containers, profiles, images, etc.).
