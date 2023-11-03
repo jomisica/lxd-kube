@@ -19,7 +19,7 @@ if ! [ -x "$(command -v lxd)" ]; then
 fi
 
 # Configure LXC with the preseed
-cat "lxc/preseed/preseed.yaml" | lxd init --preseed
+cat "preseed/preseed.yaml" | lxd init --preseed
 
 groups ${SUDO_USER} | grep lxd
 if [ $? -eq 0 ]; then

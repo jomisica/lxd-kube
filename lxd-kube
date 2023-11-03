@@ -35,7 +35,7 @@ usage() {
 
 get_lxc_profile_path() {
     if ! [ -f "$1" ]; then
-        echo "lxc/profiles/default/k8s.yaml"
+        echo "projects/default/lxc/profiles/k8s.yaml"
         return 0
     fi
     echo "$1"
@@ -43,7 +43,7 @@ get_lxc_profile_path() {
 
 get_kubernetes_bootstrap_path() {
     if ! [ -f "$1" ]; then
-        echo "kubernetes/bootstrap/default/bootstrap.sh"
+        echo "projects/default/kubernetes/bootstrap/bootstrap.sh"
         return 0
     fi
     echo "$1"
@@ -51,7 +51,7 @@ get_kubernetes_bootstrap_path() {
 
 get_kubernetes_postboot_path() {
     if ! [ -f "$1" ]; then
-        echo "kubernetes/postboot/default/postboot.sh"
+        echo "projects/default/kubernetes/postboot/postboot.sh"
         return 0
     fi
     echo "$1"
@@ -62,7 +62,7 @@ get_kubernetes_template_path() {
         echo "$1"
         return 0
     fi
-    echo "kubernetes/templates/default/"$(basename $(dirname "$1"))"/"$(basename "$1")
+    echo "projects/default/kubernetes/templates/"$(basename $(dirname "$1"))"/"$(basename "$1")
 }
 
 get_projects() {
@@ -275,20 +275,30 @@ create_lxc_projects() {
 }
 
 create_lxc_bridges() {
-    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+    if ! [ -f "projects/${PROJECT_NAME}/lxc/bridge/bridge.yaml" ]; then
         return
     fi
 
-    echo "### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME}..."
-    if ! get_bridge "${PROJECT_NAME}"-br; then
+    echo "### Creating bridge ${bridge_name} for project ${PROJECT_NAME}..."
+    evolve_templates "projects/${PROJECT_NAME}/lxc/bridge/bridge.yaml" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml"
+    local bridge_name=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
+
+    if [ ${#bridge_name} -gt 15 ]; then
+        echo "#### Error creating the bridge ${bridge_name}, the bridge name cannot be longer than 15 characters."
+        exit 255
+    fi
+
+    #echo ${bridge_name}
+
+    if ! get_bridge "${bridge_name}"; then
 
         if is_cluster; then
             CLUSSTER_MEMBERS=()
             get_cluster_member
 
             for ((o = 0; o < ${#CLUSSTER_MEMBERS[@]}; o++)); do
-                echo "#### Creating bridge ${PROJECT_NAME}-br for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
-                lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br --target="${CLUSSTER_MEMBERS[$o]}"
+                echo "#### Creating bridge "${bridge_name}" for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
+                lxc --project "${PROJECT_NAME}" network create "${bridge_name}" --target="${CLUSSTER_MEMBERS[$o]}"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] The bridge was created on member ${CLUSSTER_MEMBERS[$o]}."
                 else
@@ -298,7 +308,7 @@ create_lxc_bridges() {
             done
         fi
 
-        lxc --project "${PROJECT_NAME}" network create "${PROJECT_NAME}"-br
+        lxc --project "${PROJECT_NAME}" network create "${bridge_name}"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge created"
         else
@@ -309,9 +319,7 @@ create_lxc_bridges() {
         echo "#### [OK] Bridge exists"
     fi
 
-    mkdir -p generated-configs/lxc/bridge/"${PROJECT_NAME}"
-    evolve_templates "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml"
-    lxc --project "${PROJECT_NAME}" network edit "${PROJECT_NAME}"-br < <(cat "generated-configs/lxc/bridge/${PROJECT_NAME}/bridge.yaml")
+    lxc --project "${PROJECT_NAME}" network edit "${bridge_name}" < <(cat "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
 
     if [ $? -eq 0 ]; then
         echo "#### [OK] Bridge edited"
@@ -344,10 +352,9 @@ create_lxc_profiles() {
         fi
 
         echo "### Applying the settings in the '${PROFILE_NAME}' profile in the '${PROJECT_NAME}' LXC project."
-        mkdir -p generated-configs/lxc/profiles/"${PROJECT_NAME}"
-        evolve_templates $(get_lxc_profile_path "lxc/profiles/${PROJECT_NAME}/${PROFILE_NAME}.yaml") "generated-configs/lxc/profiles/${PROJECT_NAME}/${PROFILE_NAME}.yaml"
+        evolve_templates $(get_lxc_profile_path "projects/${PROJECT_NAME}/lxc/profiles/${PROFILE_NAME}.yaml") "${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
 
-        lxc --project "${PROJECT_NAME}" profile edit "${PROFILE_NAME}" < <(cat generated-configs/lxc/profiles/"${PROJECT_NAME}"/"${PROFILE_NAME}".yaml)
+        lxc --project "${PROJECT_NAME}" profile edit "${PROFILE_NAME}" < <(cat ${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml)
         if [ $? -eq 0 ]; then
             echo "#### [OK] Settings applied"
         else
@@ -422,12 +429,15 @@ delete_lxc_images() {
 
 delete_lxc_bridges() {
 
-    if ! [ -f "lxc/lxdbridge/${PROJECT_NAME}/bridge.yaml" ]; then
+    if ! [ -f "projects/${PROJECT_NAME}/lxc/bridge/bridge.yaml" ]; then
         return
     fi
-    echo "### Deleting bridge ${PROJECT_NAME}-br in project '${PROJECT_NAME}'."
-    if get_bridge "${PROJECT_NAME}"-br; then
-        lxc network delete "${PROJECT_NAME}"-br
+
+    local bridge_name=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
+
+    echo "### Deleting bridge ${bridge_name} in project '${PROJECT_NAME}'."
+    if get_bridge "${bridge_name}"; then
+        lxc network delete "${bridge_name}"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge deleted"
         else
@@ -469,12 +479,9 @@ delete_lxc_profiles() {
 
 delete_generated_files() {
 
-    rm -fr "kubernetes/kubectl-configs/${PROJECT_NAME}"
+    rm -fr "${LXC_GENERATED_CONFIGS_DIR}"
+    rm -fr "${K8S_GENERATED_CONFIGS_DIR}"
     #rm -fr "logs/${PROJECT_NAME}"
-    rm -fr "generated-configs/kubernetes/templates/${PROJECT_NAME}"
-    rm -fr "generated-configs/lxc/bridge/${PROJECT_NAME}"
-    rm -fr "generated-configs/lxc/profiles/${PROJECT_NAME}"
-
 }
 
 destroy() {
@@ -485,10 +492,6 @@ destroy() {
     delete_lxc_profiles
     delete_lxc_images
     delete_lxc_bridges
-
-    if [ $DELETE_GENERATED = true ]; then
-        delete_generated_files
-    fi
 
     local PROJECTS=()
     get_projects
@@ -505,6 +508,10 @@ destroy() {
         fi
     else
         echo "#### [OK] Project do not exists"
+    fi
+
+    if [ $DELETE_GENERATED = true ]; then
+        delete_generated_files
     fi
     echo -e "\n# END Destroying LXD's '${PROJECT_NAME}' project...\n"
 }
@@ -559,7 +566,7 @@ export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
 EOF
 
-    cat $(get_kubernetes_bootstrap_path "kubernetes/bootstrap/${PROJECT_NAME}/${INSTANCE_NAME}/bootstrap.sh")
+    cat $(get_kubernetes_bootstrap_path "projects/${PROJECT_NAME}/kubernetes/bootstrap/${INSTANCE_NAME}.sh")
 }
 
 build_postboot_payload_content() {
@@ -587,7 +594,7 @@ export K8S_MASTER_INSTANCE_IP=${K8S_MASTER_INSTANCE_IP};
 
 EOF
 
-    cat $(get_kubernetes_postboot_path "kubernetes/postboot/${PROJECT_NAME}/postboot.sh")
+    cat $(get_kubernetes_postboot_path "projects/${PROJECT_NAME}/kubernetes/postboot/postboot.sh")
 }
 
 evolve_templates() {
@@ -628,11 +635,11 @@ generate_kubernetes_token() {
 
 apply_cni_configs() {
 
-    local cni_directory="kubernetes/templates/${PROJECT_NAME}/cni"
+    local cni_directory="projects/${PROJECT_NAME}/kubernetes/templates/cni"
+
     if ! [ -d "${cni_directory}" ]; then
-        cni_directory="kubernetes/templates/default/cni"
+        cni_directory="projects/default/kubernetes/templates/cni"
     fi
-    mkdir -p "generated-configs/${cni_directory}"
 
     local IFS=$(echo -en "\n\b")
     local templates=$(find "${cni_directory}" -type f | sort 2>/dev/null)
@@ -648,10 +655,10 @@ apply_cni_configs() {
         wait_phase
 
         echo "##### Processing the ${file_name} template"
-        evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
+        evolve_templates "${TEMPLATE}" "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}"
 
         echo "##### Applying the ${file_name} template to Kubernetes."
-        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
+        cat "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "###### [OK] The template was applied successfully."
         else
@@ -667,21 +674,24 @@ wait_phase() {
     while [ $t -le ${MAX_WAIT_SECOUNDS} ]; do
         local wait_pods_running=""
         wait_pods_running=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
+        #echo $wait_pods_running
         if [ $wait_pods_running -eq 1 ]; then
+            sleep 5
             break
         fi
-        sleep 1
+        sleep 5
         t=$((t + 1))
     done
 }
 
 apply_others_configs() {
 
-    local others_apply_directory="kubernetes/templates/${PROJECT_NAME}/others/apply"
+    wait_phase
+
+    local others_apply_directory="projects/${PROJECT_NAME}/kubernetes/templates/others/apply"
     if ! [ -d "${others_apply_directory}" ]; then
-        others_apply_directory="kubernetes/templates/default/others/apply"
+        others_apply_directory="projects/default/kubernetes/templates/others/apply"
     fi
-    mkdir -p "generated-configs/${others_apply_directory}"
 
     local IFS=$(echo -en "\n\b")
     local templates=$(find "${others_apply_directory}" -type f | sort 2>/dev/null)
@@ -700,10 +710,10 @@ apply_others_configs() {
         #echo ${TEMPLATE}
 
         echo "#### Processing the ${file_name} template"
-        evolve_templates "${TEMPLATE}" "generated-configs/${TEMPLATE}"
+        evolve_templates "${TEMPLATE}" "${K8S_GENERATED_CONFIGS_DIR}/others/apply/${file_name}"
 
         echo "#### Applying the ${file_name} template to Kubernetes."
-        cat "generated-configs/${TEMPLATE}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply -f - >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+        cat "${K8S_GENERATED_CONFIGS_DIR}/others/apply/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply -f - >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "##### [OK] The template was applied successfully."
         else
@@ -712,7 +722,7 @@ apply_others_configs() {
         fi
 
     done
-        wait_phase
+    wait_phase
     echo
 }
 
@@ -741,21 +751,19 @@ create_instance_log_dir() {
 }
 
 create_generated_dirs() {
-    GENERATED_CONFIGS_DIR="generated-configs/kubernetes/templates/${PROJECT_NAME}"
-    echo "### Creating the ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes"
-    mkdir -p ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others}
+    echo "## Creating the directories for the generated config files to kubernetes"
+
+    mkdir -p projects/${PROJECT_NAME}/{kubernetes/{kubeconfig,generated-configs/{cni,csi,init,join,others/{apply,create}}},lxc/generated-configs/{bridge,profiles}}
     if [ $? -eq 0 ]; then
-        echo "##### [OK] The ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes has been created"
+        echo "### [OK] The directories for the generated config files to kubernetes has been created"
     else
-        echo "##### [$?] Error creating ${GENERATED_CONFIGS_DIR}/{cni,csi,init,join,others} directories for the generated config files to kubernetes"
+        echo "### [$?] Error creating directories for the generated config files to kubernetes"
         exit 255
     fi
     echo
 }
 
 provision_kubernetes_cluster() {
-
-    create_generated_dirs
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
@@ -811,17 +819,7 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            KUBECTL_CONFIGS_DIR="kubernetes/kubectl-configs/${PROJECT_NAME}"
-            echo "#### Creating the ${KUBECTL_CONFIGS_DIR} directory for the kubectl config files"
-            mkdir -p "${KUBECTL_CONFIGS_DIR}"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${KUBECTL_CONFIGS_DIR} directory for the kubectl config files has been created"
-            else
-                echo "##### [$?] Error creating ddd directory for the kubectl config files"
-                exit 255
-            fi
-
-            TEMPLATE_DIR=kubernetes/templates/"${PROJECT_NAME}"
+            TEMPLATE_DIR="projects/${PROJECT_NAME}/kubernetes/templates"
 
             echo "#### Installing the necessary software in the container, such as kubernetes, containerd and some dependent utilities."
             build_bootstrap_payload_content "${PROJECT_NAME}" "${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/bootstrap.log" 2>&1
@@ -837,7 +835,7 @@ provision_kubernetes_cluster() {
 
             kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/init/kubeadm-init-config.yaml")
             echo "#### Processing the ${kadminittemplate} template"
-            evolve_templates "${kadminittemplate}" "${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
+            evolve_templates "${kadminittemplate}" "${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The "${kadminittemplate}" template was processed successfully"
             else
@@ -845,12 +843,12 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
-            lxc --project "${PROJECT_NAME}" file push -p ${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0
+            echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+            lxc --project "${PROJECT_NAME}" file push -p ${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0
             if [ $? -eq 0 ]; then
-                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
+                echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
-                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+                echo "##### [$?] Error when copying '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
                 exit 255
             fi
 
@@ -882,11 +880,11 @@ provision_kubernetes_cluster() {
             kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeconfig/kubeadm-config.yaml")
             echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
             echo "#### Creating ${KUBECTL_CONFIGS_DIR}/kubeconfig to access the master plane"
-            evolve_templates "${kubeconfigtemplate}" "${KUBECTL_CONFIGS_DIR}/kubeconfig"
+            evolve_templates "${kubeconfigtemplate}" "${K8S_GENERATED_KUBECONFIG_DIR}/config"
 
             kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-config.yaml")
             echo "#### Processing the ${kadmjointemplate} template to join workers"
-            evolve_templates "${kadmjointemplate}" "${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
+            evolve_templates "${kadmjointemplate}" "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The ${kadmjointemplate} template was processed successfully"
             else
@@ -931,12 +929,12 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Copying the '${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
-            lxc --project "${PROJECT_NAME}" file push -p "${GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0
+            echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
+            lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0
             if [ $? -eq 0 ]; then
-                echo "##### [OK] The '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
+                echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
-                echo "##### [$?] Error when copying '${GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
+                echo "##### [$?] Error when copying '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
                 exit 255
             fi
 
@@ -986,7 +984,7 @@ copysshkey() {
             echo "#### ABORT: The container is not active and/or has not the network configured"
             exit 255
         fi
-        lxc --project "${PROJECT_NAME}" file push lxc/SSH-KEY/lxkube.pub ${INSTANCE_NAME}/root/.ssh/authorized_keys --uid 0
+        lxc --project "${PROJECT_NAME}" file push projects/SSH-KEY/lxkube.pub ${INSTANCE_NAME}/root/.ssh/authorized_keys --uid 0
         if [ $? -eq 0 ]; then
             echo "#### [OK] SSH public key copied"
         else
@@ -1000,7 +998,10 @@ copysshkey() {
 provision() {
     echo -e "\n# Provisioning Kubernetes Cluster inside LXC containers\n"
 
-    # Create project instance directory
+    # Create project directories to save generated templates files
+    create_generated_dirs
+
+    # Create project instance logs directory
     create_instance_log_dir "${PROJECT_INSTANCES_NAME}"
 
     echo -e "## Provisioning LXC containers\n"
@@ -1124,6 +1125,13 @@ valid_config() {
     PROJECT_INSTANCES_IMAGES=${PROJECT_INSTANCE_IMAGE_TMP}
     PROJECT_INSTANCES_TYPE=${PROJECT_INSTANCE_TYPE_TMP}
 
+    # LXC dirs
+    LXC_GENERATED_CONFIGS_DIR="projects/${PROJECT_NAME}/lxc/generated-configs"
+    # kubernetes dirs
+    K8S_GENERATED_CONFIGS_DIR="projects/${PROJECT_NAME}/kubernetes/generated-configs"
+    # kubernetes kubeconfig
+    K8S_GENERATED_KUBECONFIG_DIR="projects/${PROJECT_NAME}/kubernetes/kubeconfig"
+
     if [ $error -gt 0 ]; then
         echo error
         exit 255
@@ -1156,7 +1164,7 @@ parse_options() {
             config=*)
                 val=${OPTARG#*=}
                 opt=${OPTARG%=$val}
-                CONFIG_FILE="${val}"
+                CONFIG_FILE=config/"${val}"
                 ;;
             *)
                 echo "Unknown option --${OPTARG}" >&2

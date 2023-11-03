@@ -2,6 +2,7 @@
 .gitignore
 .local
 logs
-kubernetes/kubectl-configs
+kubernetes/kubeconfig/config
 generated-configs
-
+old
+projects/*/kubernetes/kubeconfig
