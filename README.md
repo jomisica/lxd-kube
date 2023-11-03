@@ -1,4 +1,4 @@
-# lxd-projects-provisioning-kubernetes
+# lxd-kube
 Written by José Miguel Silva Caldeira <miguel@ncdc.pt>.
 
 ## Description:
