@@ -89,8 +89,6 @@ Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que 
         │           │   ├── 003-metallb-native.yaml
         │           │   ├── 004-metallb-ip-address-pool.yaml
         │           │   └── 005-metallb-l2-advertisement.yaml
-        │           ├── delete
-        │           └── replace
         └── lxc
             ├── bridge
             │   └── bridge.yaml
@@ -105,7 +103,6 @@ Esta é a arvore de ficheiros que está envolvida neste projecto de exemplo que 
                 ├── ncdc3-kmaster.yaml
                 ├── ncdc3-kworker1.yaml
                 └── ncdc3-kworker2.yaml
-
 ```
 
 Quando se inicia o script com um determinado ficheiro de configuração. O script começa por fazer uma verificação minima no ficheiro de configuração.

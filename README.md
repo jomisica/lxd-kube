@@ -89,8 +89,6 @@ This is the file tree that is involved in this example project that comes with t
         │           │   ├── 003-metallb-native.yaml
         │           │   ├── 004-metallb-ip-address-pool.yaml
         │           │   └── 005-metallb-l2-advertisement.yaml
-        │           ├── delete
-        │           └── replace
         └── lxc
             ├── bridge
             │   └── bridge.yaml
@@ -105,7 +103,6 @@ This is the file tree that is involved in this example project that comes with t
                 ├── ncdc3-kmaster.yaml
                 ├── ncdc3-kworker1.yaml
                 └── ncdc3-kworker2.yaml
-
 ```
 
 Start by creating the existing project in the configuration file in LXD, so that within this project there may be associated (containers, profiles, images, etc.).
