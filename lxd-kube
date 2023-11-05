@@ -312,8 +312,8 @@ delete_storage_volumes() {
             local VOLUMES=()
             get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
 
+            echo "### Deleting a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
             if is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
-                echo "### Deleting a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
                 lxc storage volume delete "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}"
                 if [ $? -eq 0 ]; then
                     echo "#### [OK] The storage volume was deleted successfully."
@@ -322,6 +322,7 @@ delete_storage_volumes() {
                     exit $?
                 fi
             fi
+
 
         done
     done
@@ -356,6 +357,7 @@ delete_storage() {
 
         evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
 
+
         local STORAGE_NAME=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
 
         unset IFS
@@ -368,6 +370,7 @@ delete_storage() {
         local STORAGES=()
         get_storages "${PROJECT_NAME}"
 
+        echo "### Deleting storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
         if is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
             echo "#### Deleting storage ${STORAGE_NAME} in project ${PROJECT_NAME}..."
             lxc storage delete "${STORAGE_NAME}" --project "${PROJECT_NAME}"
@@ -456,8 +459,8 @@ create_storage() {
         local STORAGES=()
         get_storages "${PROJECT_NAME}"
 
+        echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
         if ! is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
-            echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
 
             if is_cluster; then
                 CLUSSTER_MEMBERS=()
@@ -537,9 +540,8 @@ create_storage_volumes() {
             local VOLUMES=()
             get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
 
+            echo "### Creating a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
             if ! is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
-                echo "### Creating a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
-
                 lxc storage volume create "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}"
                 if [ $? -eq 0 ]; then
                     echo "#### [OK] The storage volume was created successfully."
@@ -1321,6 +1323,7 @@ provision() {
 
     create_lxc_projects
 
+
     create_lxc_bridges
 
     create_lxc_profiles
@@ -1333,7 +1336,7 @@ provision() {
     copysshkey
 
     echo -e "## END of LXC provisioning\n"
-
+    
     echo -e "## Provisioning Kubernetes clusters\n"
 
     provision_kubernetes_cluster

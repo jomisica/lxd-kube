@@ -88,6 +88,11 @@ authorization:
     cacheAuthorizedTTL: 0s
     cacheUnauthorizedTTL: 0s
 cgroupDriver: systemd
+#featureGates:
+#  KubeletInUserNamespace: true
+# We use cgroupfs that is delegated by systemd, so we do not use "systemd" driver
+# (unless you run another systemd in the namespace)
+#cgroupDriver: "cgroupfs"
 clusterDNS:
 - 10.96.0.10
 clusterDomain: cluster.local

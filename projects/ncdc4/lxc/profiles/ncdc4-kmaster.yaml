@@ -14,10 +14,10 @@ config:
   security.nesting: "true"
 description: LXD profile for Kubernetes
 devices:
-  # kmsg: #Required for newer systems using cgroup v2.
-  #   path: /dev/kmsg
-  #   source: /dev/kmsg
-  #   type: unix-char
+  kmsg: #Required for newer systems using cgroup v2.
+    path: /dev/kmsg
+    source: /dev/kmsg
+    type: unix-char
   eth0:
     name: eth0
     hwaddr: 00:16:3e:00:00:01
