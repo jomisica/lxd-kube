@@ -93,6 +93,25 @@ get_containers() {
     done < <(lxc --project "$1" list --format csv 2>/dev/null)
 }
 
+get_volumes() {
+    local fields
+    local IFS=,
+    while read -a fields; do
+        local prof_name=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
+        #echo $prof_name
+        VOLUMES+=("$prof_name")
+    done < <(lxc --project "$1" storage volume list "$2" --format csv 2>/dev/null)
+}
+get_storages() {
+    local fields
+    local IFS=,
+    while read -a fields; do
+        local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
+        #echo $prof_name
+        STORAGES+=("$prof_name")
+    done < <(lxc --project "$1" storage list --format csv 2>/dev/null)
+}
+
 get_container_stat() {
     local fields
     local IFS=,
@@ -253,6 +272,299 @@ lxc_pause_containers() {
             echo "#### [OK] The container is not running"
         fi
     done
+}
+
+delete_storage_volumes() {
+    echo "## Deleting storage volumes for project."
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+
+        local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
+        #echo $profile_file
+
+        #local PROFILE_DEVICES=$(yq e ".devices" "${profile_file}")
+        #echo "${PROFILE_DEVICES}"
+
+        local PROFILE_DEVICES_LENGTH=$(yq -r ".devices | keys | length" "${profile_file}")
+        #echo "${PROFILE_DEVICES_LENGTH}"
+
+        for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
+            local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
+            local DEVICE_NAME=$(yq -r ".devices.${type}.type" "${profile_file}")
+            if [ "x${DEVICE_NAME}" = "xnic" ]; then
+                continue
+            fi
+
+            local DEVICE_POOL=$(yq -r ".devices.${type}.pool" "${profile_file}")
+            if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+                continue
+            fi
+
+            local DEVICE_SOURCE=$(yq -r ".devices.${type}.source" "${profile_file}")
+            # if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+            #     continue
+            # fi
+            #echo $DEVICE_NAME
+            #echo $DEVICE_POOL
+            #echo $DEVICE_SOURCE
+
+            local VOLUMES=()
+            get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
+
+            echo "### Deleting a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
+            if is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
+                lxc storage volume delete "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}"
+                if [ $? -eq 0 ]; then
+                    echo "#### [OK] The storage volume was deleted successfully."
+                else
+                    echo "#### [$?] Error deleting the storage volume."
+                    exit $?
+                fi
+            fi
+
+
+        done
+    done
+    echo "## END Deleting storage volumes for project."
+    echo
+}
+
+delete_storage() {
+
+    local storage_directory="projects/${PROJECT_NAME}/lxc/storage"
+
+    if ! [ -d "${storage_directory}" ]; then
+        return 0
+    fi
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${storage_directory}" -type f | sort 2>/dev/null)
+    local templates_num=$(find "${storage_directory}" -type f 2>/dev/null | wc -l)
+
+    if [ ${templates_num} -lt 1 ]; then
+        return 0
+    fi
+
+    echo "## Deleting the storages for the ${PROJECT_NAME} project..."
+
+    for TEMPLATE in ${templates}; do
+
+        #echo ${TEMPLATE}
+        local IFS=$(echo -en "\n\b")
+
+        local file_name=$(basename ${TEMPLATE})
+
+        evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
+
+
+        local STORAGE_NAME=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
+
+        unset IFS
+
+        if [ "x${STORAGE_NAME}" = "xnull" ]; then
+            echo "### [error] The storage template must contain the name of the storage to be created."
+            exit 255
+        fi
+
+        local STORAGES=()
+        get_storages "${PROJECT_NAME}"
+
+        echo "### Deleting storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
+        if is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
+            echo "#### Deleting storage ${STORAGE_NAME} in project ${PROJECT_NAME}..."
+            lxc storage delete "${STORAGE_NAME}" --project "${PROJECT_NAME}"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The storage was deleted successfully."
+            else
+                echo "##### [$?] Error deleting storage."
+                exit $?
+            fi
+        fi
+
+    done
+    echo "## END Deleting storage for project in LXC."
+
+    #exit
+    #lxc storage list --project "${PROJECT_NAME}"
+    echo
+}
+
+create_storage() {
+
+    local storage_directory="projects/${PROJECT_NAME}/lxc/storage"
+
+    if ! [ -d "${storage_directory}" ]; then
+        return 0
+    fi
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${storage_directory}" -type f | sort 2>/dev/null)
+    local templates_num=$(find "${storage_directory}" -type f 2>/dev/null | wc -l)
+
+    if [ ${templates_num} -lt 1 ]; then
+        return 0
+    fi
+
+    echo "## Creating the storages for the ${PROJECT_NAME} project..."
+
+    for TEMPLATE in ${templates}; do
+
+        #echo ${TEMPLATE}
+        local IFS=$(echo -en "\n\b")
+
+        local file_name=$(basename ${TEMPLATE})
+
+        evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
+
+        #${TEMPLATE}
+
+        local loopdevice=false
+
+        local STORAGE_NAME=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
+        local STORAGE_DRIVER=$(yq e ".driver" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
+        local STORAGE_SOURCE=$(yq e ".config.source" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
+        local STORAGE_SIZE=$(yq e ".config.size" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
+
+        unset IFS
+
+        if [ "x${STORAGE_NAME}" = "xnull" ]; then
+            echo "### [error] The storage template must contain the name of the storage to be created."
+            exit 255
+        fi
+        if [ "x${STORAGE_DRIVER}" = "xnull" ]; then
+            echo "### The storage template must contain the storage driver to be created."
+            exit 255
+        fi
+
+        if [ "x${STORAGE_SOURCE}" = "xnull" ]; then
+            loopdevice=true
+            STORAGE_SOURCE=""
+        else
+            STORAGE_SOURCE=" source=${STORAGE_SOURCE}"
+        fi
+
+        if [ "x${STORAGE_SIZE}" = "xnull" ]; then
+            STORAGE_SIZE=""
+        else
+            STORAGE_SIZE=" size=${STORAGE_SIZE}"
+
+        fi
+        # echo ${STORAGE_NAME}
+        # echo ${STORAGE_DRIVER}
+        # echo ${STORAGE_SOURCE}
+        # echo ${STORAGE_SIZE}
+
+        # exit
+        local STORAGES=()
+        get_storages "${PROJECT_NAME}"
+
+        echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
+        if ! is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
+
+            if is_cluster; then
+                CLUSSTER_MEMBERS=()
+                get_cluster_member
+
+                for ((r = 0; r < ${#CLUSSTER_MEMBERS[@]}; r++)); do
+                    echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project on member ${CLUSSTER_MEMBERS[$r]}..."
+                    lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target="${CLUSSTER_MEMBERS[$r]}"
+                    if [ $? -eq 0 ]; then
+                        echo "##### [OK] Storage ${STORAGE_NAME} was created in member ${CLUSSTER_MEMBERS[$r]}."
+                    else
+                        echo "##### [$?] Error creating storage ${STORAGE_NAME} in member ${CLUSSTER_MEMBERS[$r]}."
+                        exit $?
+                    fi
+                done
+            fi
+
+            #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target terra
+            #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target lxdn1
+            echo "#### Creating storage ${STORAGE_NAME} for project ${PROJECT_NAME}..."
+            lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" --project "${PROJECT_NAME}"
+            if [ $? -eq 0 ]; then
+                echo "##### [OK] The storage was created successfully."
+            else
+                echo "##### [$?] Error creating storage."
+                exit $?
+            fi
+
+        else
+            echo "#### [OK] Storage already exists."
+        fi
+
+    done
+    echo "## END Creating storage for project in LXC."
+
+    #exit
+    #lxc storage list --project "${PROJECT_NAME}"
+    echo
+}
+
+create_storage_volumes() {
+
+    echo "## Creating storage volumes for project."
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
+
+        local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
+        #echo $profile_file
+
+        #local PROFILE_DEVICES=$(yq e ".devices" "${profile_file}")
+        #echo "${PROFILE_DEVICES}"
+
+        local PROFILE_DEVICES_LENGTH=$(yq -r ".devices | keys | length" "${profile_file}")
+        #echo "${PROFILE_DEVICES_LENGTH}"
+
+        for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
+            local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
+            local DEVICE_NAME=$(yq -r ".devices.${type}.type" "${profile_file}")
+            if [ "x${DEVICE_NAME}" = "xnic" ]; then
+                continue
+            fi
+
+            local DEVICE_POOL=$(yq -r ".devices.${type}.pool" "${profile_file}")
+            if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+                continue
+            fi
+
+            local DEVICE_SOURCE=$(yq -r ".devices.${type}.source" "${profile_file}")
+            # if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+            #     continue
+            # fi
+            #echo $DEVICE_NAME
+            #echo $DEVICE_POOL
+            #echo $DEVICE_SOURCE
+
+            local VOLUMES=()
+            get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
+
+            echo "### Creating a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
+            if ! is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
+                lxc storage volume create "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}"
+                if [ $? -eq 0 ]; then
+                    echo "#### [OK] The storage volume was created successfully."
+                else
+                    echo "#### [$?] Error creating the storage volume."
+                    exit $?
+                fi
+            else
+                echo "#### [OK] The storage volume already exists."
+            fi
+
+            #lxc storage volume list ${DEVICE_POOL} --project "${PROJECT_NAME}"
+
+        done
+    done
+    echo "## END Creating storage volumes for project."
+    echo
+
+    #lxc storage create NAME dir --project ncdc3 --target terra
+    #lxc storage create NAME dir --project ncdc3 --target lxdn1
+    #lxc storage create NAME dir --project ncdc3
+    #lxc storage volume create NAME ncdc3 --project ncdc3
+    #echo aaaa
 }
 
 create_lxc_projects() {
@@ -493,22 +805,25 @@ destroy() {
     delete_lxc_images
     delete_lxc_bridges
 
+    delete_storage_volumes
+    delete_storage
+
     local PROJECTS=()
     get_projects
 
-    echo "### Deleting the '${PROJECT_NAME}' project in LXC."
-    if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
-        PROJECTS+=("${PROJECT_NAME}")
-        lxc project delete "${PROJECT_NAME}"
-        if [ $? -eq 0 ]; then
-            echo "#### [OK] Project deleted"
-        else
-            echo "#### [$?] Error deleting project"
-            $FORCE || exit $?
-        fi
-    else
-        echo "#### [OK] Project do not exists"
-    fi
+    # echo "### Deleting the '${PROJECT_NAME}' project in LXC."
+    # if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
+    #     PROJECTS+=("${PROJECT_NAME}")
+    #     lxc project delete "${PROJECT_NAME}"
+    #     if [ $? -eq 0 ]; then
+    #         echo "#### [OK] Project deleted"
+    #     else
+    #         echo "#### [$?] Error deleting project"
+    #         $FORCE || exit $?
+    #     fi
+    # else
+    #     echo "#### [OK] Project do not exists"
+    # fi
 
     if [ $DELETE_GENERATED = true ]; then
         delete_generated_files
@@ -753,7 +1068,7 @@ create_instance_log_dir() {
 create_generated_dirs() {
     echo "## Creating the directories for the generated config files to kubernetes"
 
-    mkdir -p projects/${PROJECT_NAME}/{kubernetes/{kubeconfig,generated-configs/{cni,csi,init,join,others/{apply,create}}},lxc/generated-configs/{bridge,profiles}}
+    mkdir -p projects/${PROJECT_NAME}/{kubernetes/{kubeconfig,generated-configs/{cni,csi,init,join,others/{apply,create}}},lxc/generated-configs/{bridge,profiles,storage}}
     if [ $? -eq 0 ]; then
         echo "### [OK] The directories for the generated config files to kubernetes has been created"
     else
@@ -1008,16 +1323,20 @@ provision() {
 
     create_lxc_projects
 
+
     create_lxc_bridges
 
     create_lxc_profiles
+
+    create_storage
+    create_storage_volumes
 
     create_lxc_instances
 
     copysshkey
 
     echo -e "## END of LXC provisioning\n"
-
+    
     echo -e "## Provisioning Kubernetes clusters\n"
 
     provision_kubernetes_cluster
