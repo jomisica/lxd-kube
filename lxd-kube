@@ -292,7 +292,7 @@ delete_storage_volumes() {
         for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
             local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
             local DEVICE_NAME=$(yq -r ".devices.${type}.type" "${profile_file}")
-            if [ "x${DEVICE_NAME}" = "xnic" ]; then
+            if [ "x${DEVICE_NAME}" != "xdisk" ]; then
                 continue
             fi
 
@@ -520,7 +520,7 @@ create_storage_volumes() {
         for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
             local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
             local DEVICE_NAME=$(yq -r ".devices.${type}.type" "${profile_file}")
-            if [ "x${DEVICE_NAME}" = "xnic" ]; then
+            if [ "x${DEVICE_NAME}" != "xdisk" ]; then
                 continue
             fi
 
