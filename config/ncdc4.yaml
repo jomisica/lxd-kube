@@ -16,7 +16,12 @@ config:
     in Kubernetes with an external IP. For this to be possible we must define
     the DHCP range on the project bridge, in order to reserve some IPs for
     MetalLB to use to assign to LoadBalancers. And configure the MetalLB
-    IP poll accordingly."
+    IP poll accordingly.
+    This project also makes use of secondary storages, where three storages
+    are created in lxd and a volume is created in each of these storages.
+    These LXD volumes are mounted in containers. This way, it demonstrates
+    how to use storage and volumes. We could create volumes on SSD disks for
+    the database, for example, another volume for assets, etc."
   lxd:
     projectName: ncdc4
     target: terra # cluster members: terra, marte
