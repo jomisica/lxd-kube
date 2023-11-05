@@ -21,10 +21,10 @@ devices:
     parent: ${PROJECT_NAME}-br
     type: nic
   root:
-    limits.max: 500iops
-    limits.read: 500iops
-    limits.write: 500iops
-    size: 5GB
+    limits.max: 100iops
+    # limits.read: 500iops
+    # limits.write: 500iops
+    size: 10GB
     path: /
     pool: default
     type: disk
