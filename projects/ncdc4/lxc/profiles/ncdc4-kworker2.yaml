@@ -21,15 +21,24 @@ devices:
     parent: ${PROJECT_NAME}-br
     type: nic
   root:
+    limits.max: 100iops
+    limits.read: 100iops
+    limits.write: 100iops
     path: /
     pool: default
     type: disk
   data:
+    limits.max: 100iops
+    limits.read: 100iops
+    limits.write: 100iops
     path: /mnt/data # Mount point within the instance
     pool: ncdc4-kworkers # Name of the storage to use
     source: ncdc4-data # Name of the volume that will be created on the storage.
     type: disk
   data-share:
+    limits.max: 10iops
+    limits.read: 10iops
+    limits.write: 10iops
     path: /mnt/data-share # Mount point within the instance
     pool: ncdc4-kall # Name of the storage to use
     source: ncdc4-data-share # Name of the volume that will be created on the storage.
