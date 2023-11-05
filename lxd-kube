@@ -811,19 +811,19 @@ destroy() {
     local PROJECTS=()
     get_projects
 
-    # echo "### Deleting the '${PROJECT_NAME}' project in LXC."
-    # if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
-    #     PROJECTS+=("${PROJECT_NAME}")
-    #     lxc project delete "${PROJECT_NAME}"
-    #     if [ $? -eq 0 ]; then
-    #         echo "#### [OK] Project deleted"
-    #     else
-    #         echo "#### [$?] Error deleting project"
-    #         $FORCE || exit $?
-    #     fi
-    # else
-    #     echo "#### [OK] Project do not exists"
-    # fi
+    echo "### Deleting the '${PROJECT_NAME}' project in LXC."
+    if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
+        PROJECTS+=("${PROJECT_NAME}")
+        lxc project delete "${PROJECT_NAME}"
+        if [ $? -eq 0 ]; then
+            echo "#### [OK] Project deleted"
+        else
+            echo "#### [$?] Error deleting project"
+            $FORCE || exit $?
+        fi
+    else
+        echo "#### [OK] Project do not exists"
+    fi
 
     if [ $DELETE_GENERATED = true ]; then
         delete_generated_files
