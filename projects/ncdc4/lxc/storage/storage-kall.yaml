@@ -5,8 +5,9 @@
 # are created with image files, when deleting the project. You should not
 # delete the project before making a backup of the data on the storages
 # created for the project.
-config: {}
+config:
+  size: 5GiB # Size of the image file to be created
 description: ""
 name: ${PROJECT_NAME}-kall # Name of the storage to be created
-driver: dir # Type of driver to use
+driver: btrfs # Type of driver to use
 used_by: []

@@ -6,7 +6,7 @@
 # delete the project before making a backup of the data on the storages
 # created for the project.
 config:
-  size: 2GiB # Size of the image file to be created, maximum 30 GiB
+  size: 5GiB # Size of the image file to be created
 description: ""
 name: ${PROJECT_NAME}-kmaster # Name of the storage to be created
 driver: zfs # Type of driver to use

@@ -19,7 +19,7 @@ devices:
     type: unix-char
   eth0:
     name: eth0
-    hwaddr: 00:16:3e:01:00:01
+    hwaddr: 00:16:3e:02:00:01
     nictype: bridged
     parent: ${PROJECT_NAME}-br
     type: nic

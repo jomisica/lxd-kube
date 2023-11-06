@@ -282,6 +282,11 @@ delete_storage_volumes() {
 
         local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
         #echo $profile_file
+        if ! [ -f "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml" ]; then
+            echo "#### [OK] Profile generated file do not exists"
+            echo
+            return 0
+        fi
 
         #local PROFILE_DEVICES=$(yq e ".devices" "${profile_file}")
         #echo "${PROFILE_DEVICES}"
@@ -323,7 +328,6 @@ delete_storage_volumes() {
                 fi
             fi
 
-
         done
     done
     echo "## END Deleting storage volumes for project."
@@ -355,9 +359,11 @@ delete_storage() {
 
         local file_name=$(basename ${TEMPLATE})
 
-        evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
-
-
+        #evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
+        if ! [ -f "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}" ]; then
+            echo "#### [OK] Storage generated file do not exists"
+            continue
+        fi
         local STORAGE_NAME=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}")
 
         unset IFS
@@ -745,8 +751,14 @@ delete_lxc_bridges() {
         return
     fi
 
-    local bridge_name=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
+    echo "### Deleting bridge ${bridge_name} in project '${PROJECT_NAME}'."
+    if ! [ -f "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml" ]; then
+        echo "#### [OK] Bridge generated file do not exists"
+        echo
+        return 0
+    fi
 
+    local bridge_name=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
     echo "### Deleting bridge ${bridge_name} in project '${PROJECT_NAME}'."
     if get_bridge "${bridge_name}"; then
         lxc network delete "${bridge_name}"
@@ -1006,6 +1018,9 @@ apply_others_configs() {
     local others_apply_directory="projects/${PROJECT_NAME}/kubernetes/templates/others/apply"
     if ! [ -d "${others_apply_directory}" ]; then
         others_apply_directory="projects/default/kubernetes/templates/others/apply"
+    fi
+    if ! [ -d "${others_apply_directory}" ]; then
+        return
     fi
 
     local IFS=$(echo -en "\n\b")
@@ -1272,13 +1287,17 @@ provision_kubernetes_cluster() {
     # This script will run after basic kubernetes boots. With it we can install
     # and configure one or many applications for a given project. Using the
     # kubeconfig generated during kubernetes cluster initialization.
-    echo "#### Running the post boot script in project ${PROJECT_NAME}..."
-    build_postboot_payload_content | bash >>"logs/${PROJECT_NAME}/postboot.log" 2>&1
-    if [ $? -eq 0 ]; then
-        echo "##### [OK] The postboot script ran without problems."
+    echo "## Running the post boot script in project ${PROJECT_NAME}..."
+    if [ -f "projects/${PROJECT_NAME}/kubernetes/postboot/postboot.sh" ]; then
+        build_postboot_payload_content | bash >>"logs/${PROJECT_NAME}/postboot.log" 2>&1
+        if [ $? -eq 0 ]; then
+            echo "### [OK] The postboot script ran without problems."
+        else
+            echo "### [$?] An error status was returned when running the postboot script."
+            exit 255
+        fi
     else
-        echo "##### [$?] An error status was returned when running the postboot script."
-        exit 255
+        echo "### The project has no postboot scripts to apply."
     fi
     echo
 }
@@ -1323,7 +1342,6 @@ provision() {
 
     create_lxc_projects
 
-
     create_lxc_bridges
 
     create_lxc_profiles
@@ -1336,7 +1354,7 @@ provision() {
     copysshkey
 
     echo -e "## END of LXC provisioning\n"
-    
+
     echo -e "## Provisioning Kubernetes clusters\n"
 
     provision_kubernetes_cluster

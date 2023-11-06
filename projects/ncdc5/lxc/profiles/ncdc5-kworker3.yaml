@@ -20,7 +20,7 @@ devices:
     type: unix-char
   eth0:
     name: eth0
-    hwaddr: 00:16:3e:04:00:01
+    hwaddr: 00:16:3e:05:00:04
     nictype: bridged
     parent: ${PROJECT_NAME}-br
     type: nic
@@ -34,27 +34,19 @@ devices:
     type: disk
   data:
     limits.max: 100iops
-    #limits.read: 100iops
-    #limits.write: 100iops
+    limits.read: 100iops
+    limits.write: 100iops
     path: /mnt/data # Mount point within the instance
-    pool: ${PROJECT_NAME}-kmaster # Name of the storage to use
-    source: ${PROJECT_NAME}-data # Name of the volume that will be created on the storage.
-    type: disk
-  data-workers:
-    limits.max: 100iops
-    #limits.read: 100iops
-    #limits.write: 100iops
-    path: /mnt/data-workers # Mount point within the instance
     pool: ${PROJECT_NAME}-kworkers # Name of the storage to use
     source: ${PROJECT_NAME}-data # Name of the volume that will be created on the storage.
     type: disk
   data-share:
     limits.max: 10iops
-    #limits.read: 10iops
-    #limits.write: 10iops
+    limits.read: 10iops
+    limits.write: 10iops
     path: /mnt/data-share # Mount point within the instance
     pool: ${PROJECT_NAME}-kall # Name of the storage to use
     source: ${PROJECT_NAME}-data-share # Name of the volume that will be created on the storage.
     type: disk
-name: ${PROJECT_NAME}-kmaster
+name: ${PROJECT_NAME}-kworker3
 used_by: []

@@ -9,7 +9,7 @@ config:
     be via IP since the domain configured in the project is internal to the
     containers. To use the domain we must create a hosts record on the machine
     where LXD is installed pointing to the master plane IP or add the
-    option controlPlaneEndpointUseIP: true, in the project configuration, as the case
+    option KubeConfigEndpointUseIP: true, in the project configuration, as the case
     may be. With this option, kube config is configured with the IP and not the 
     domain."
   lxd:
@@ -18,28 +18,28 @@ config:
   kubernetes:
     clusterName: ncdc1
     version: 1.22.0
-    podSubnet: 10.10.0.0/16
+    podSubnet: 10.1.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
-    controlPlaneEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+    KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
   instances:
   - instance:
     lxd:
       name: ncdc1-kmaster
       image: ubuntu:22.04
-      profile: ncdc2-kmaster
+      profile: ncdc1-kmaster
     kubernetes:
       type: master
   - instance:
     lxd:
       name: ncdc1-kworker1
       image: ubuntu:22.04
-      profile: ncdc2-kworker1
+      profile: ncdc1-kworker1
     kubernetes:
       type: worker
   - instance:
     lxd:
       name: ncdc1-kworker2
       image: ubuntu:22.04
-      profile: ncdc2-kworker2
+      profile: ncdc1-kworker2
     kubernetes:
       type: worker
