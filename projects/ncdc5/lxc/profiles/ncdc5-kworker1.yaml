@@ -1,0 +1,52 @@
+config:
+  limits.memory: 2GB
+  limits.memory.enforce: hard # values hard/soft
+  limits.cpu: 1,2
+  #limits.cpu: "2"
+  #limits.cpu: 0-3
+  limits.cpu.allowance: 30%
+  limits.cpu.priority: 5
+  #limits.cpu.allowance: 50ms/200ms
+  limits.memory.swap: "false"
+  linux.kernel_modules: ip_tables,ip6_tables,nf_nat,overlay,br_netfilter
+  raw.lxc: "lxc.apparmor.profile=unconfined\nlxc.cap.drop= \nlxc.cgroup.devices.allow=a\nlxc.mount.auto=proc:rw sys:rw\nlxc.mount.entry = /dev/kmsg dev/kmsg none defaults,bind,create=file"
+  security.privileged: "true"
+  security.nesting: "true"
+description: LXD profile for Kubernetes
+devices:
+  kmsg: #Required for newer systems using cgroup v2.
+    path: /dev/kmsg
+    source: /dev/kmsg
+    type: unix-char
+  eth0:
+    name: eth0
+    hwaddr: 00:16:3e:00:00:02
+    nictype: bridged
+    parent: ${PROJECT_NAME}-br
+    type: nic
+  root:
+    limits.max: 100iops
+    # limits.read: 500iops
+    # limits.write: 500iops
+    size: 10GB
+    path: /
+    pool: default
+    type: disk
+  data:
+    limits.max: 100iops
+    limits.read: 100iops
+    limits.write: 100iops
+    path: /mnt/data # Mount point within the instance
+    pool: ${PROJECT_NAME}-kworkers # Name of the storage to use
+    source: ${PROJECT_NAME}-data # Name of the volume that will be created on the storage.
+    type: disk
+  data-share:
+    limits.max: 10iops
+    limits.read: 10iops
+    limits.write: 10iops
+    path: /mnt/data-share # Mount point within the instance
+    pool: ${PROJECT_NAME}-kall # Name of the storage to use
+    source: ${PROJECT_NAME}-data-share # Name of the volume that will be created on the storage.
+    type: disk
+name: ${PROJECT_NAME}-kworker1
+used_by: []

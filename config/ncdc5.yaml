@@ -1,0 +1,56 @@
+config:
+  description: "This example project works on clustered LXD.
+    But as it uses a NAT network interface, all containers must be in the same
+    member of the LXD cluster, otherwise Kubernetes will not be able to
+    communicate with the nodes. To do this, I use the target option to specify
+    the LXD member that I need to create containers to be used by Kubernetes. 
+    Also, access to Kubernetes does not work from the local network, it only
+    works from the machine on which LXD is installed. Access to Kubernetes must
+    be via IP since the domain configured in the project is internal to the
+    containers. To use the domain we must create a hosts record on the machine
+    where LXD is installed pointing to the master plane IP or add the
+    option KubeConfigEndpointUseIP: true, in the project configuration, as the case
+    may be. With this option, kube config is configured with the IP and not the 
+    domain.
+    This example project uses MetalLB to allow the creation of LoadBalancres
+    in Kubernetes with an external IP. For this to be possible we must define
+    the DHCP range on the project bridge, in order to reserve some IPs for
+    MetalLB to use to assign to LoadBalancers. And configure the MetalLB
+    IP poll accordingly.
+    This project also makes use of secondary storages, where three storages
+    are created in lxd and a volume is created in each of these storages.
+    These LXD volumes are mounted in containers. This way, it demonstrates
+    how to use storage and volumes. We could create volumes on SSD disks for
+    the database, for example, another volume for assets, etc.
+    This example uses CRI-O to run containers on Kubernetes."
+  lxd:
+    projectName: ncdc5
+    target: terra # cluster members: terra, marte
+  kubernetes:
+    clusterName: ncdc5
+    version: 1.22.2
+    podSubnet: 10.5.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+    KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+  instances:
+  - instance:
+    lxd:
+      name: ncdc5-kmaster
+      image: ubuntu:22.04
+      profile: ncdc5-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc5-kworker1
+      image: ubuntu:22.04
+      profile: ncdc5-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc5-kworker2
+      image: ubuntu:22.04
+      profile: ncdc5-kworker2
+    kubernetes:
+      type: worker
