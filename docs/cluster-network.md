@@ -1,3 +1,3 @@
 
 
-![Network diagram](docs/assets/cluster-example1.vpd.png)
+![Network diagram](assets/cluster-example1.vpd.png)
