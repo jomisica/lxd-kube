@@ -1,4 +1,4 @@
-## Description:
+## LXD cluster interconnect:
 
 This document describes a way to physically and virtually connect the hosts belonging to an LXD cluster, and the containers that are used by the Kubernetes cluster. In this case there are only two physical hosts.
 
