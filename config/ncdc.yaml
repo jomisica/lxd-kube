@@ -1,12 +1,14 @@
 config:
-  description: This example project works on clustered LXD. However, the
-    bridge must be configured in Linux first. In this specific case I use the
-    lxdbrige bridge that is created in the system and configured. And use the 
-    project profile, which by default uses this bridge for the network.
-    This is the most production mode, as it allows the network infrastructure
-    to be configured in the systems with certain needs for each project.
-    And use this bridge for LXD containers, as well as each kubernetes node
-    that works on top of it.
+  description: "This example project works on an LXD cluster, although it 
+   also works with an isolated LXD host. For it to work, the bridge not
+   managed by LXD must be created on all hosts belonging to the LXD cluster
+   and that it allows the containers configured on the various LXD hosts
+   to communicate with each other. In this specific case I use the
+   lxdbrige bridge that is created on the systems and configured. And use 
+   the project profiles, which by default uses this bridge for the network.
+   This is the mode used in production, as it allows the network infrastructure
+   to be configured on systems with specific needs for each project.
+   "
   lxd:
     projectName: ncdc
   kubernetes:
