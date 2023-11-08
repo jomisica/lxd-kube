@@ -14,15 +14,14 @@ export KUBECONFIG="projects/${PROJECT_NAME}/kubernetes/kubeconfig/config"
 # project in question.
 
 # Wait for all nodes to be ready
-local t=0
+t=0
 while [ $t -le 300 ]; do
     node_status=$(kubectl get nodes | grep NotReady)
     if [ $? -eq 1 ]; then
         echo "All nodes up..."
         break
     fi
-    echo ${node_status}
-    sleep 1
+    #echo ${node_status}
     sleep 1
     t=$((t + 1))
 done

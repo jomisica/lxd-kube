@@ -13,15 +13,14 @@ export KUBECONFIG="projects/${PROJECT_NAME}/kubernetes/kubeconfig/config"
 # project in question.
 
 # Wait for all nodes to be ready
-local t=0
+t=0
 while [ $t -le 300 ]; do
   node_status=$(kubectl get nodes | grep NotReady)
   if [ $? -eq 1 ]; then
     echo "All nodes up..."
     break
   fi
-  echo ${node_status}
-  sleep 1
+  #echo ${node_status}
   sleep 1
   t=$((t + 1))
 done
@@ -31,8 +30,6 @@ done
 # using kubectl to apply templates, use helm, etc.
 
 # get loadbalancer external ip
-
-
 load_balancer_external_ip=$(kubectl get svc wordpress --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}")
 # We have found a way to test the status of the service.
 # In this case sleep 30 seconds or more
