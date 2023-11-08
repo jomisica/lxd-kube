@@ -13,15 +13,23 @@ config:
   security.nesting: "true"
 description: LXD profile for Kubernetes
 devices:
-  kmsg: #Required for newer systems using cgroup v2.
+  kmsg: # Required for newer systems using cgroup v2.
     path: /dev/kmsg
     source: /dev/kmsg
     type: unix-char
   eth0:
     name: eth0
+    # Defining the MAC address is important in this profile so that we
+    # can create a DHCP reservation and configure the domain to point to
+    # the reserved IP. In this case, the domain ncdc.kmaster.ncdc.pt will
+    # have to resolve to the IP reserved for this MAC address.
     hwaddr: 00:16:3e:00:00:01
-    nictype: bridged
+    # This bridge is a bridge created in the system, it must have already 
+    # been created before. It must allow containers connected to this bridge
+    # to communicate with other containers on other lxd hosts that also have
+    # this bridge configured.
     parent: lxdbridge
+    nictype: bridged
     type: nic
   root:
     path: /
