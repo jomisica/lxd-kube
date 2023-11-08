@@ -282,7 +282,7 @@ delete_storage_volumes() {
 
         local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
         #echo $profile_file
-        if ! [ -f "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml" ]; then
+        if ! [ -f "${profile_file}" ]; then
             echo "#### [OK] Profile generated file do not exists"
             echo
             return 0

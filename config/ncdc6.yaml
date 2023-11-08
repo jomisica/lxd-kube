@@ -1,0 +1,52 @@
+config:
+  description: "This example uses basically all of the previous examples.
+    However, it deploys Wordpress and MariaDB. The idea is to reinforce
+    how we can use the storage of an LXD host, normally SSD for the
+    databases. In this case, the template forces the database to always
+    run in the ncdc6-kworker1 instance where an LXD host directory is
+    mounted. Wordpress is forced to use the ncdc6-kworker2 instance where
+    an LXD host directory is mounted for the wordpress files. However, in
+    a real case it would not be necessary for Wordpress to be tied to an
+    instance, as long as it has another type of storage, for example NFS.
+    Since what requires a lot of storage iops would be the database, it
+    makes sense to run on certain hosts that have appropriate storage for
+    the databases.
+
+    If we want to access the Wordpress page from another host on the network,
+    we can use the Kubernetes proxy like this:
+    kubectl port-forward service/wordpress 8000:80 --address='0.0.0.0'
+
+    This way we can connect to the LXD host from another computer on the
+    network on port 8000 for example. http://host lxd ip:8000
+    "
+  lxd:
+    projectName: ncdc6
+    target: terra # cluster members: terra, marte
+  kubernetes:
+    clusterName: ncdc6
+    version: 1.22.2
+    podSubnet: 10.6.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+    KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+  instances:
+  - instance:
+    lxd:
+      name: ncdc6-kmaster
+      image: ubuntu:22.04
+      profile: ncdc6-kmaster
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc6-kworker1
+      image: ubuntu:22.04
+      profile: ncdc6-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc6-kworker2
+      image: ubuntu:22.04
+      profile: ncdc6-kworker2
+    kubernetes:
+      type: worker

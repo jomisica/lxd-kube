@@ -1,0 +1,13 @@
+# This example defines a storage that will use a file as an image,
+# which will be mounted as a file system on a loop device by LXD.
+#
+# WARNING all data will be deleted from the storages, when the storages
+# are created with image files, when deleting the project. You should not
+# delete the project before making a backup of the data on the storages
+# created for the project.
+config:
+  size: 15GiB # Size of the image file to be created
+description: ""
+name: ${PROJECT_NAME}-mysql # Name of the storage to be created
+driver: zfs # Type of driver to use
+used_by: []
