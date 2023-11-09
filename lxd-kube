@@ -23,7 +23,7 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
-MAX_WAIT_SECOUNDS=360
+MAX_WAIT_SECONDS=360
 K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
 DELETE_GENERATED=false
 FORCE=false
@@ -157,7 +157,7 @@ get_cluster_member() {
     local IFS=,
     while read -a fields; do
         local MEMBERS=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
-        CLUSSTER_MEMBERS+=("$MEMBERS")
+        CLUSTER_MEMBERS+=("$MEMBERS")
     done < <(lxc cluster list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
 }
 
@@ -472,16 +472,16 @@ create_storage() {
         if ! is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
 
             if is_cluster; then
-                CLUSSTER_MEMBERS=()
+                CLUSTER_MEMBERS=()
                 get_cluster_member
 
-                for ((r = 0; r < ${#CLUSSTER_MEMBERS[@]}; r++)); do
-                    echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project on member ${CLUSSTER_MEMBERS[$r]}..."
-                    lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target="${CLUSSTER_MEMBERS[$r]}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                for ((r = 0; r < ${#CLUSTER_MEMBERS[@]}; r++)); do
+                    echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project on member ${CLUSTER_MEMBERS[$r]}..."
+                    lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target="${CLUSTER_MEMBERS[$r]}" 2>"logs/${PROJECT_NAME}/lxc.log"
                     if [ $? -eq 0 ]; then
-                        echo "##### [OK] Storage ${STORAGE_NAME} was created in member ${CLUSSTER_MEMBERS[$r]}."
+                        echo "##### [OK] Storage ${STORAGE_NAME} was created in member ${CLUSTER_MEMBERS[$r]}."
                     else
-                        echo "##### [$?] Error creating storage ${STORAGE_NAME} in member ${CLUSSTER_MEMBERS[$r]}."
+                        echo "##### [$?] Error creating storage ${STORAGE_NAME} in member ${CLUSTER_MEMBERS[$r]}."
                         exit $?
                     fi
                 done
@@ -614,16 +614,16 @@ create_lxc_bridges() {
     if ! get_bridge "${bridge_name}"; then
 
         if is_cluster; then
-            CLUSSTER_MEMBERS=()
+            CLUSTER_MEMBERS=()
             get_cluster_member
 
-            for ((o = 0; o < ${#CLUSSTER_MEMBERS[@]}; o++)); do
-                echo "#### Creating bridge "${bridge_name}" for project ${PROJECT_NAME} on member ${CLUSSTER_MEMBERS[$o]}..."
-                lxc --project "${PROJECT_NAME}" network create "${bridge_name}" --target="${CLUSSTER_MEMBERS[$o]}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            for ((o = 0; o < ${#CLUSTER_MEMBERS[@]}; o++)); do
+                echo "#### Creating bridge "${bridge_name}" for project ${PROJECT_NAME} on member ${CLUSTER_MEMBERS[$o]}..."
+                lxc --project "${PROJECT_NAME}" network create "${bridge_name}" --target="${CLUSTER_MEMBERS[$o]}" 2>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
-                    echo "##### [OK] The bridge was created on member ${CLUSSTER_MEMBERS[$o]}."
+                    echo "##### [OK] The bridge was created on member ${CLUSTER_MEMBERS[$o]}."
                 else
-                    echo "##### [$?] Error creating the bridge on member ${CLUSSTER_MEMBERS[$o]}."
+                    echo "##### [$?] Error creating the bridge on member ${CLUSTER_MEMBERS[$o]}."
                     exit $?
                 fi
             done
@@ -987,7 +987,42 @@ apply_cni_configs() {
         evolve_templates "${TEMPLATE}" "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}"
 
         echo "##### Applying the ${file_name} template to Kubernetes."
-        cat "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl create -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
+        cat "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl apply -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
+        if [ $? -eq 0 ]; then
+            echo "###### [OK] The template was applied successfully."
+        else
+            echo "###### [$?] Error applying the template."
+            exit 255
+        fi
+    done
+}
+
+apply_csi_configs() {
+
+    local csi_directory="projects/${PROJECT_NAME}/kubernetes/templates/csi"
+
+    if ! [ -d "${csi_directory}" ]; then
+        csi_directory="projects/default/kubernetes/templates/csi"
+    fi
+
+    local IFS=$(echo -en "\n\b")
+    local templates=$(find "${csi_directory}" -type f | sort 2>/dev/null)
+    local templates_num=$(find "${csi_directory}" -type f 2>/dev/null | wc -l)
+
+    if [ ${templates_num} -lt 1 ]; then
+        return 0
+    fi
+    echo "#### Applying CSI templates to Kubernetes..."
+
+    for TEMPLATE in ${templates}; do
+        local file_name=$(basename ${TEMPLATE})
+        wait_phase
+
+        echo "##### Processing the ${file_name} template"
+        evolve_templates "${TEMPLATE}" "${K8S_GENERATED_CONFIGS_DIR}/csi/${file_name}"
+
+        echo "##### Applying the ${file_name} template to Kubernetes."
+        cat "${K8S_GENERATED_CONFIGS_DIR}/csi/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubectl apply -f - >>"logs/${PROJECT_NAME}/${INSTANCE_NAME}/kubeadminit.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "###### [OK] The template was applied successfully."
         else
@@ -1000,7 +1035,7 @@ apply_cni_configs() {
 wait_phase() {
     sleep 5
     local t=0
-    while [ $t -le ${MAX_WAIT_SECOUNDS} ]; do
+    while [ $t -le ${MAX_WAIT_SECONDS} ]; do
         local wait_pods_running=""
         wait_pods_running=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
         #echo $wait_pods_running
@@ -1095,6 +1130,17 @@ create_generated_dirs() {
     echo
 }
 
+get_node_stat(){
+    local node=""
+    node=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no "$1" -o wide -o yaml 2>/dev/null)
+    local node_stat=$?
+    echo "${node}" | grep 'type: Ready' >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
+    if [ $? -eq 0 ] && [ $node_stat -eq 0 ]; then
+        return 0
+    fi
+    return 1
+}
+
 provision_kubernetes_cluster() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
@@ -1122,12 +1168,7 @@ provision_kubernetes_cluster() {
 
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
 
-            local master_node_joined=
-            master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
-            local node_exists=$?
-            local worker_stat=
-            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
-            if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
+            if [ $FORCE = false ] && get_node_stat "${INSTANCE_NAME}"; then
                 echo "#### [OK] The master plane has already successfully initialized"
                 echo "### END Configuring the master plane: ${INSTANCE_NAME}"
                 echo
@@ -1225,6 +1266,7 @@ provision_kubernetes_cluster() {
             fi
 
             apply_cni_configs
+            apply_csi_configs
 
             echo "### END Configuring the master plane: ${INSTANCE_NAME}"
         fi
@@ -1232,12 +1274,7 @@ provision_kubernetes_cluster() {
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
             echo "### Configuring the worker: ${INSTANCE_NAME}"
 
-            local master_node_joined=""
-            master_node_joined=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get no ${INSTANCE_NAME} -o wide -o yaml 2>/dev/null)
-            local node_exists=$?
-            local worker_stat=""
-            worker_stat=$(echo "${worker_node_joined}" | grep 'type: Ready') >>"${INSTANCE_LOG_DIR}/install.log" 2>&1
-            if [ $FORCE = false ] && [ $? -eq 0 ] && [ $node_exists -eq 0 ]; then
+            if [ $FORCE = false ] && get_node_stat "${INSTANCE_NAME}"; then
                 echo "#### [OK] The worker has already successfully joinedy"
                 echo "### END Configuring the worker: ${INSTANCE_NAME}"
                 echo
@@ -1486,13 +1523,9 @@ parse_options() {
         -)
             case "${OPTARG}" in
             force)
-                #val="${!OPTIND}"
-                #OPTIND=$(($OPTIND + 1))
                 FORCE=true
                 ;;
             delete-generated)
-                #val="${!OPTIND}"
-                #OPTIND=$(($OPTIND + 1))
                 DELETE_GENERATED=true
                 ;;
             config)
