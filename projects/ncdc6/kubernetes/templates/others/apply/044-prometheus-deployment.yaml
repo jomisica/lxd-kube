@@ -50,4 +50,4 @@ spec:
 
       - name: prometheus-storage-volume
         persistentVolumeClaim:
-            claimName: pvc-nfs-data
+            claimName: pvc-prometheus-data
