@@ -1033,11 +1033,21 @@ apply_csi_configs() {
 }
 
 wait_phase() {
+#   for i in $(kubectl api-resources --verbs=list --namespaced -o name | grep -v "events.events.k8s.io" | grep -v "events" | sort | uniq); do
+#     echo "Resource:" $i
+#     kubectl -A get --ignore-not-found ${i}
+#   done
+#   --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"
+# kubectl get pod -o custom-columns=:.metadata.name  --no-headers
+# kubectl get secret wordpress -o yaml --template='{{index .metadata.labels}}'
+# kubectl get pod -A -o custom-columns=:.status.phase --no-headers
+
+
     sleep 5
     local t=0
     while [ $t -le ${MAX_WAIT_SECONDS} ]; do
         local wait_pods_running=""
-        wait_pods_running=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o yaml | grep 'phase: ' | uniq | wc -l 2>/dev/null)
+        wait_pods_running=$(lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl get pod -A -o custom-columns=:.status.phase --no-headers | uniq | wc -l 2>/dev/null)
         #echo $wait_pods_running
         if [ $wait_pods_running -eq 1 ]; then
             sleep 5
@@ -1046,6 +1056,8 @@ wait_phase() {
         sleep 5
         t=$((t + 1))
     done
+
+
 }
 
 apply_others_configs() {
