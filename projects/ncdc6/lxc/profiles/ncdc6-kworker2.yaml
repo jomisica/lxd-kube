@@ -1,8 +1,8 @@
 config:
-  limits.memory: 2GB
+  limits.memory: 4GB
   #limits.memory.enforce: hard # values hard/soft
   #limits.cpu: 1,2
-  #limits.cpu: "2"
+  limits.cpu: "3"
   #limits.cpu: 0-3
   #limits.cpu.allowance: 30%
   #limits.cpu.priority: 5

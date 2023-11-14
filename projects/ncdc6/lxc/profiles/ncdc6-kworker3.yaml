@@ -20,7 +20,7 @@ devices:
     type: unix-char
   eth0:
     name: eth0
-    hwaddr: 00:16:3e:06:00:01
+    hwaddr: 00:16:3e:06:00:04
     nictype: bridged
     parent: ${PROJECT_NAME}-br
     type: nic
@@ -28,9 +28,17 @@ devices:
     #limits.max: 100iops
     # limits.read: 500iops
     # limits.write: 500iops
-    #size: 60GB
+    #size: 10GB
     path: /
     pool: default
     type: disk
-name: ${PROJECT_NAME}-kmaster
+  data:
+    #limits.max: 100iops
+    #limits.read: 100iops
+    #limits.write: 100iops
+    path: /opt/local-path-provisioner # Mount point within the instance
+    pool: ${PROJECT_NAME}-www # Name of the storage to use
+    source: ${PROJECT_NAME}-data-www # Name of the volume that will be created on the storage.
+    type: disk
+name: ${PROJECT_NAME}-kworker3
 used_by: []

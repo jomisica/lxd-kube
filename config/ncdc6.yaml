@@ -50,3 +50,10 @@ config:
       profile: ncdc6-kworker2
     kubernetes:
       type: worker
+  - instance:
+    lxd:
+      name: ncdc6-kworker3
+      image: ubuntu:22.04
+      profile: ncdc6-kworker3
+    kubernetes:
+      type: worker
