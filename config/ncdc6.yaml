@@ -43,7 +43,7 @@ config:
     version: 1.22.2
     podSubnet: 10.6.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
-    KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+    kubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
   instances:
   - instance:
     lxd:

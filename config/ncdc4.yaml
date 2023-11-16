@@ -9,7 +9,7 @@ config:
     be via IP since the domain configured in the project is internal to the
     containers. To use the domain we must create a hosts record on the machine
     where LXD is installed pointing to the master plane IP or add the
-    option KubeConfigEndpointUseIP: true, in the project configuration, as the case
+    option kubeConfigEndpointUseIP: true, in the project configuration, as the case
     may be. With this option, kube config is configured with the IP and not the 
     domain.
     This example project uses MetalLB to allow the creation of LoadBalancres
@@ -37,7 +37,7 @@ config:
     version: 1.22.2
     podSubnet: 10.4.0.0/16
     controlPlaneEndpointDomain: ncdc.pt
-    KubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+    kubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
   instances:
   - instance:
     lxd:

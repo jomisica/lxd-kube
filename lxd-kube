@@ -1463,7 +1463,7 @@ provision() {
 valid_config() {
     local error=0
 
-    K8S_KUBE_CONFIG_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.KubeConfigEndpointUseIP' "${CONFIG_FILE}")
+    K8S_KUBE_CONFIG_ENDPOINT_USE_IP=$(yq e '.config.kubernetes.kubeConfigEndpointUseIP' "${CONFIG_FILE}")
     if [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xfalse" ] || [ "x${K8S_KUBE_CONFIG_ENDPOINT_USE_IP}" = "xnull" ]; then
         K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
     else
