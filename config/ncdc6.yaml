@@ -12,12 +12,28 @@ config:
     makes sense to run on certain hosts that have appropriate storage for
     the databases.
 
+    In this example, wordpress and mysql are deployed for demonstration purposes,
+    however these apps must be installed in another way, for example with helm so
+    that we can manage/control the versions. The basic idea of this script is to
+    actually create a cluster and make it functional so that we can access it through
+    the API with kubeconfig. We must configure the network, Storage, Monitoring, so
+    that applications can be installed and configured through kubeconfig, with helm or
+    git actions or another way that controls application versions. However, it is
+    possible to install applications.
+
     If we want to access the Wordpress page from another host on the network,
     we can use the Kubernetes proxy like this:
     kubectl port-forward service/wordpress 8000:80 --address='0.0.0.0'
 
     This way we can connect to the LXD host from another computer on the
     network on port 8000 for example. http://host lxd ip:8000
+
+    If we want to access the Grafana page from another host on the network,
+    we can use the Kubernetes proxy like this:
+    kubectl port-forward service/grafana 32000:3000 --address='0.0.0.0' -n monitoring
+
+    This way we can connect to the LXD host from another computer on the
+    network on port 32000 for example. http://host lxd ip:32000
     "
   lxd:
     projectName: ncdc6
