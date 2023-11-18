@@ -29,6 +29,7 @@ DELETE_GENERATED=false
 FORCE=false
 CONFIG_FILE=
 WAIT_CDRs=false
+PRIMARY_MASTER=true
 
 usage() {
     echo
@@ -935,9 +936,36 @@ EOF
     cat $(get_kubernetes_postboot_path "projects/${PROJECT_NAME}/kubernetes/postboot/postboot.sh")
 }
 
+generate_proxy_server_list() {
+    local i=0
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
+        if [[ "${INSTANCE_TYPE}" == "master" ]]; then
+            local INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
+            echo "    server ${INSTANCE_NAME} ${INSTANCE_IP}:6443 check"
+        fi
+    done
+}
+
+build_proxy_payload_content() {
+
+    CONTROLPLANES_INSTANCES_DATA=$(generate_proxy_server_list)
+
+    cat <<EOF
+export K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP=${K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP};
+export CONTROLPLANES_INSTANCES_DATA="${CONTROLPLANES_INSTANCES_DATA}";
+
+EOF
+
+    cat $(get_kubernetes_postboot_path "projects/${PROJECT_NAME}/kubernetes/bootstrap/proxy.sh")
+}
+
 evolve_templates() {
 
     sed \
+        -e "s?\${JOIN_CERT_KEY}?${JOIN_CERT_KEY}?" \
+        -e "s?\${K8S_CONTROL_PLANE_ENDPOINT}?${K8S_CONTROL_PLANE_ENDPOINT}?" \
         -e "s?\${K8S_MASTER_INSTANCE_NAME}?${K8S_MASTER_INSTANCE_NAME}?" \
         -e "s?\${K8S_MASTER_INSTANCE_IP}?${K8S_MASTER_INSTANCE_IP}?" \
         -e "s?\${CA_CERT_HASH}?${CA_CERT_HASH}?" \
@@ -1069,7 +1097,6 @@ wait_phase() {
 
     # return
 
-
     local t=0
     while [ $t -le ${MAX_WAIT_SECONDS} ]; do
         if [ ${WAIT_CDRs} = true ]; then
@@ -1198,6 +1225,12 @@ get_node_stat() {
 }
 
 provision_kubernetes_cluster() {
+
+    # if [ ${K8S_KUBE_CONTROLPLANE_HA} = true ]; then
+    #     build_proxy_payload_content
+    #     exit
+    # fi
+
     local i=0
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
@@ -1213,18 +1246,45 @@ provision_kubernetes_cluster() {
         CURRENT_INSTANCE_IP=$(get_instance_ip "${PROJECT_NAME}" "${INSTANCE_NAME}")
         INSTANCE_LOG_DIR=logs/${PROJECT_NAME}/${INSTANCE_NAME}
 
-        K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
-        if [ ${K8S_KUBE_CONFIG_ENDPOINT_USE_IP} = true ]; then
-            K8S_API_ENDPOINT=${CURRENT_INSTANCE_IP}
+        if [[ "${INSTANCE_TYPE}" == "proxy" ]]; then
+            echo "## Running the proxy bootstrap script in project ${PROJECT_NAME}..."
+            if [ -f "projects/${PROJECT_NAME}/kubernetes/bootstrap/proxy.sh" ]; then
+                build_proxy_payload_content | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"logs/${PROJECT_NAME}/proxybootstrap.log" 2>&1
+                if [ $? -eq 0 ]; then
+                    echo "### [OK] The bootstrap script ran without problems."
+                else
+                    echo "### [$?] An error status was returned when running the bootstrap script."
+                    exit 255
+                fi
+            else
+                echo "### The project has no bootstrap scripts to apply."
+            fi
         fi
 
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
-            K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
-            K8S_MASTER_INSTANCE_IP=${CURRENT_INSTANCE_IP}
+
+            if [ ${K8S_KUBE_CONTROLPLANE_HA} = true ]; then
+                K8S_API_ENDPOINT=${PROJECT_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+                K8S_CONTROL_PLANE_ENDPOINT=${PROJECT_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+            else
+                K8S_API_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+                K8S_CONTROL_PLANE_ENDPOINT=${INSTANCE_NAME}.${K8S_API_ENDPOINT_DOMAIN}
+                if [ ${K8S_KUBE_CONFIG_ENDPOINT_USE_IP} = true ]; then
+                    K8S_API_ENDPOINT=${CURRENT_INSTANCE_IP}
+                fi
+            fi
+
+            if [ ${PRIMARY_MASTER} = true ]; then
+                K8S_MASTER_INSTANCE_NAME=${INSTANCE_NAME}
+                K8S_MASTER_INSTANCE_IP=${CURRENT_INSTANCE_IP}
+            fi
 
             echo "### Configuring the master plane: ${INSTANCE_NAME}"
 
             if [ $FORCE = false ] && get_node_stat "${INSTANCE_NAME}"; then
+                if [ ${PRIMARY_MASTER} = true ]; then
+                    PRIMARY_MASTER=false
+                fi
                 echo "#### [OK] The master plane has already successfully initialized"
                 echo "### END Configuring the master plane: ${INSTANCE_NAME}"
                 echo
@@ -1259,69 +1319,104 @@ provision_kubernetes_cluster() {
                 exit 255
             fi
 
-            echo "#### Generating a token in Kubernetes"
-            KUBEADM_TOKEN=$(generate_kubernetes_token)
+            if [ ${PRIMARY_MASTER} = true ]; then
 
-            kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/init/kubeadm-init-config.yaml")
-            echo "#### Processing the ${kadminittemplate} template"
-            evolve_templates "${kadminittemplate}" "${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The "${kadminittemplate}" template was processed successfully"
+                echo "#### Generating a token in Kubernetes"
+                KUBEADM_TOKEN=$(generate_kubernetes_token)
+
+                kadminittemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/init/kubeadm-init-config.yaml")
+                echo "#### Processing the ${kadminittemplate} template"
+                evolve_templates "${kadminittemplate}" "${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml"
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The "${kadminittemplate}" template was processed successfully"
+                else
+                    echo "##### [$?] Error processing "${kadminittemplate}" template"
+                    exit 255
+                fi
+
+                echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+                lxc --project "${PROJECT_NAME}" file push -p ${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
+                else
+                    echo "##### [$?] Error when copying '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
+                    exit 255
+                fi
+
+                echo "#### Download the Kubernetes base images"
+                echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The images were downloaded successfully"
+                else
+                    echo "##### [$?] Error when downloading images"
+                    exit 255
+                fi
+
+                echo "#### Initializing the master plane"
+                lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --upload-certs --config /root/kubeadm-init-config.yaml >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The master plane has been successfully initialized"
+                else
+                    echo "##### [$?] Error initializing the master plane"
+                    exit 255
+                fi
+
+                echo "mkdir -p /root/.kube; cp /etc/kubernetes/admin.conf /root/.kube/config; chown $(id -u):$(id -g) /root/.kube/config" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash
+
+                JOIN_CERT_KEY=$(lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm init phase upload-certs --upload-certs | tail -n 1)
+                CA_CERT_HASH=$(echo "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* /sha256:/'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+                CA_DATA_B64=$(echo "cat /etc/kubernetes/pki/ca.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+                CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+                CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
+
+                kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeconfig/kubeadm-config.yaml")
+                echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
+                echo "#### Creating ${KUBECTL_CONFIGS_DIR}/kubeconfig to access the master plane"
+                evolve_templates "${kubeconfigtemplate}" "${K8S_GENERATED_KUBECONFIG_DIR}/config"
+
+                kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-config.yaml")
+                echo "#### Processing the ${kadmjointemplate} template to join workers"
+                evolve_templates "${kadmjointemplate}" "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The ${kadmjointemplate} template was processed successfully"
+                else
+                    echo "##### [$?] Error processing ${kadmjointemplate} template"
+                    exit 255
+                fi
+                kadmjoincontrolplanetemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-controlpanel-config.yaml")
+                echo "#### Processing the ${kadmjoincontrolplanetemplate} template to join control planes"
+                evolve_templates "${kadmjoincontrolplanetemplate}" "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml"
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The ${kadmjoincontrolplanetemplate} template was processed successfully"
+                else
+                    echo "##### [$?] Error processing ${kadmjoincontrolplanetemplate} template"
+                    exit 255
+                fi
+
+                PRIMARY_MASTER=false
             else
-                echo "##### [$?] Error processing "${kadminittemplate}" template"
-                exit 255
+
+                echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml' configuration file to ${INSTANCE_NAME}"
+                lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-controlpanel-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-controlpanel-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
+                else
+                    echo "##### [$?] Error when copying '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-controlpanel-config.yaml' configuration file to ${INSTANCE_NAME}"
+                    exit 255
+                fi
+
+                echo "#### Joining the controlplane to the cluster"
+                lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 join --config /root/kubeadm-join-controlpanel-config.yaml --ignore-preflight-errors=all >>"${INSTANCE_LOG_DIR}/kubeadmjoincontrolplane.log" 2>&1
+                if [ $? -eq 0 ]; then
+                    echo "##### [OK] The controlplane has been successfully joined"
+                else
+                    echo "##### [$?] Error joining the controlplane"
+                    $FORCE || exit 255
+                fi
+
             fi
-
-            echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
-            lxc --project "${PROJECT_NAME}" file push -p ${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
-            else
-                echo "##### [$?] Error when copying '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
-                exit 255
-            fi
-
-            echo "#### Download the Kubernetes base images"
-            echo "kubeadm config images pull --kubernetes-version v${K8S_VERSION}" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The images were downloaded successfully"
-            else
-                echo "##### [$?] Error when downloading images"
-                exit 255
-            fi
-
-            echo "#### Initializing the master plane"
-            lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- kubeadm --v=5 init --ignore-preflight-errors=all --config /root/kubeadm-init-config.yaml >>"${INSTANCE_LOG_DIR}/kubeadminit.log" 2>&1
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The master plane has been successfully initialized"
-            else
-                echo "##### [$?] Error initializing the master plane"
-                exit 255
-            fi
-
-            echo "mkdir -p /root/.kube; cp /etc/kubernetes/admin.conf /root/.kube/config; chown $(id -u):$(id -g) /root/.kube/config" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash
-
-            CA_CERT_HASH=$(echo "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* /sha256:/'" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
-            CA_DATA_B64=$(echo "cat /etc/kubernetes/pki/ca.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
-            CLIENT_CERT_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.crt | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
-            CLIENT_KEY_B64=$(echo "cat /etc/kubernetes/pki/apiserver-kubelet-client.key | base64 -w0" | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash)
-
-            kubeconfigtemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/kubeconfig/kubeadm-config.yaml")
-            echo "#### Processing the ${kubeconfigtemplate} to access the master plane"
-            echo "#### Creating ${KUBECTL_CONFIGS_DIR}/kubeconfig to access the master plane"
-            evolve_templates "${kubeconfigtemplate}" "${K8S_GENERATED_KUBECONFIG_DIR}/config"
-
-            kadmjointemplate=$(get_kubernetes_template_path "${TEMPLATE_DIR}/join/kubeadm-join-config.yaml")
-            echo "#### Processing the ${kadmjointemplate} template to join workers"
-            evolve_templates "${kadmjointemplate}" "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml"
-            if [ $? -eq 0 ]; then
-                echo "##### [OK] The ${kadmjointemplate} template was processed successfully"
-            else
-                echo "##### [$?] Error processing ${kadmjointemplate} template"
-                exit 255
-            fi
-
             echo "### END Configuring the master plane: ${INSTANCE_NAME}"
+            #exit
         fi
 
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
@@ -1373,7 +1468,6 @@ provision_kubernetes_cluster() {
         echo
     done
 
-            
     apply_cni_configs
     apply_csi_configs
     # Applying other templates to project xxxxx
@@ -1468,6 +1562,32 @@ valid_config() {
         K8S_KUBE_CONFIG_ENDPOINT_USE_IP=false
     else
         K8S_KUBE_CONFIG_ENDPOINT_USE_IP=true
+    fi
+
+    K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP=$(yq e ".config.kubernetes.controlPlaneEndpointVirtualIP" "${CONFIG_FILE}")
+    if [ -z ${K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP} ] || [ "x${K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP}" = "xnull" ]; then
+        K8S_KUBE_CONTROLPLANE_HA=false
+        K8S_KUBE_CONTROLPLANE_ENDPOINT_VIRTUAL_IP=""
+    else
+        K8S_KUBE_CONTROLPLANE_HA=true
+    fi
+
+    if [ ${K8S_KUBE_CONTROLPLANE_HA} = true ]; then
+        local PROXY_LENGTH=$(yq '.config.instances[].kubernetes | select(.type=="proxy")' "${CONFIG_FILE}" | yq length)
+        if [ ${PROXY_LENGTH} -lt 2 ]; then
+            echo "ERROR: To be able to configure control planes in high availability, you must define at least two proxy instances."
+            exit
+        fi
+        local CONTROLPLANES_LENGTH=$(yq '.config.instances[].kubernetes | select(.type=="master")' "${CONFIG_FILE}" | yq length)
+        if [ ${CONTROLPLANES_LENGTH} -lt 3 ]; then
+            echo "ERROR: To be able to configure control planes in high availability, you must define at least three instances of the master type."
+            exit
+        fi
+    fi
+    local WORKER_LENGTH=$(yq '.config.instances[].kubernetes | select(.type=="worker")' "${CONFIG_FILE}" | yq length)
+    if [ ${WORKER_LENGTH} -lt 1 ]; then
+        echo "ERROR: To be able to configure the cluster, you must define at least one instance of the worker type."
+        exit
     fi
 
     PROJECT_TARGET=$(yq e '.config.lxd.target' "${CONFIG_FILE}")

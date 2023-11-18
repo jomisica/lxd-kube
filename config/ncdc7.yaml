@@ -1,0 +1,75 @@
+config:
+  description: "This example shows how to use haproxy to have a cluster
+    with redundancy, minimum two proxy, minimum three controlplane,
+    minimum 1 worker node.
+    High availability is completely under development and everything can
+    change in the course of development. But I'm starting to organize how to
+    configure a cluster in high availability.
+    "
+  lxd:
+    projectName: ncdc7
+    target: terra # cluster members: terra, marte
+  kubernetes:
+    clusterName: ncdc7
+    version: 1.22.2
+    podSubnet: 10.7.0.0/16
+    controlPlaneEndpointDomain: ncdc.pt
+    controlPlaneEndpointVirtualIP: "192.168.16.60"
+    kubeConfigEndpointUseIP: true # Values true/false - Use IP to access the master plane in kubeconfig
+  instances:
+  - instance:
+    lxd:
+      name: ncdc7-khaproxy1
+      image: ubuntu:22.04
+      profile: ncdc7-khaproxy1
+    kubernetes:
+      type: proxy
+  - instance:
+    lxd:
+      name: ncdc7-khaproxy2
+      image: ubuntu:22.04
+      profile: ncdc7-khaproxy2
+    kubernetes:
+      type: proxy
+  - instance:
+    lxd:
+      name: ncdc7-kmaster1
+      image: ubuntu:22.04
+      profile: ncdc7-kmaster1
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc7-kmaster2
+      image: ubuntu:22.04
+      profile: ncdc7-kmaster2
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc7-kmaster3
+      image: ubuntu:22.04
+      profile: ncdc7-kmaster3
+    kubernetes:
+      type: master
+  - instance:
+    lxd:
+      name: ncdc7-kworker1
+      image: ubuntu:22.04
+      profile: ncdc7-kworker1
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc7-kworker2
+      image: ubuntu:22.04
+      profile: ncdc7-kworker2
+    kubernetes:
+      type: worker
+  - instance:
+    lxd:
+      name: ncdc7-kworker3
+      image: ubuntu:22.04
+      profile: ncdc7-kworker3
+    kubernetes:
+      type: worker

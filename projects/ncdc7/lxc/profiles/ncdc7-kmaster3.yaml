@@ -1,0 +1,36 @@
+config:
+  limits.memory: 2GB
+  #limits.memory.enforce: hard # values hard/soft
+  #limits.cpu: 1,2
+  limits.cpu: "2"
+  #limits.cpu: 0-3
+  #limits.cpu.allowance: 30%
+  #limits.cpu.priority: 5
+  #limits.cpu.allowance: 50ms/200ms
+  limits.memory.swap: "false"
+  linux.kernel_modules: ip_tables,ip6_tables,nf_nat,overlay,br_netfilter
+  raw.lxc: "lxc.apparmor.profile=unconfined\nlxc.cap.drop= \nlxc.cgroup.devices.allow=a\nlxc.mount.auto=proc:rw sys:rw\nlxc.mount.entry = /dev/kmsg dev/kmsg none defaults,bind,create=file"
+  security.privileged: "true"
+  security.nesting: "true"
+description: LXD profile for Kubernetes
+devices:
+  kmsg: #Required for newer systems using cgroup v2.
+    path: /dev/kmsg
+    source: /dev/kmsg
+    type: unix-char
+  eth0:
+    name: eth0
+    hwaddr: 00:16:3e:07:00:05
+    nictype: bridged
+    parent: lxdbridge
+    type: nic
+  root:
+    #limits.max: 100iops
+    # limits.read: 500iops
+    # limits.write: 500iops
+    #size: 60GB
+    path: /
+    pool: default
+    type: disk
+name: ${PROJECT_NAME}-kmaster3
+used_by: []
