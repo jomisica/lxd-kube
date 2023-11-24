@@ -6,3 +6,5 @@ kubernetes/kubeconfig/config
 generated-configs
 old
 projects/*/kubernetes/kubeconfig
+containerd-backup-images
+apt

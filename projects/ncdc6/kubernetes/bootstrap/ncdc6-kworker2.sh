@@ -23,6 +23,15 @@ curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:sta
 curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key | sudo apt-key add -
 apt update -y
 apt install cri-o cri-o-runc -y
+
+# insecure rep
+cat >> /etc/containers/registries.conf <<EOF
+[[registry]]
+insecure = true
+location = "core.harbor.domain"
+EOF
+
+
 systemctl enable crio.service
 systemctl start crio.service
 apt install cri-tools -y

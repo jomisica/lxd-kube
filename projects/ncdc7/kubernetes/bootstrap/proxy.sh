@@ -2,7 +2,9 @@ set -o xtrace
 
 env
 
-
+if [ -d /mnt/apt/ ]; then
+    cp /mnt/apt/* /var/cache/apt/archives/
+fi
 
 apt update && apt install -y keepalived haproxy curl
 

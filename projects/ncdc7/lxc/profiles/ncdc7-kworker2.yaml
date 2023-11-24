@@ -1,8 +1,8 @@
 config:
-  limits.memory: 2GB
+  limits.memory: 4GB
   #limits.memory.enforce: hard # values hard/soft
   #limits.cpu: 1,2
-  limits.cpu: "2"
+  # limits.cpu: "3"
   #limits.cpu: 0-3
   #limits.cpu.allowance: 30%
   #limits.cpu.priority: 5
@@ -18,6 +18,16 @@ devices:
     path: /dev/kmsg
     source: /dev/kmsg
     type: unix-char
+  # Mounting directories with local images to speed up cluster
+  # installation and configuration
+  k8s-images-cache:
+    path: /mnt/images/
+    source: /home/miguel/lxd-kube/containerd-backup-images/${K8S_VERSION}/
+    type: disk
+  apt-cache:
+    path: /mnt/apt/
+    source: /home/miguel/lxd-kube/apt
+    type: disk
   eth0:
     name: eth0
     hwaddr: 00:16:3e:07:00:07
@@ -31,14 +41,6 @@ devices:
     #size: 10GB
     path: /
     pool: default
-    type: disk
-  data:
-    #limits.max: 100iops
-    #limits.read: 100iops
-    #limits.write: 100iops
-    path: /opt/local-path-provisioner # Mount point within the instance
-    pool: ${PROJECT_NAME}-www # Name of the storage to use
-    source: ${PROJECT_NAME}-data-www # Name of the volume that will be created on the storage.
     type: disk
 name: ${PROJECT_NAME}-kworker2
 used_by: []

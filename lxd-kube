@@ -77,7 +77,7 @@ get_projects() {
         local LXD_PROJECT=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         string_sem_current="${LXD_PROJECT//(current)/}"
         PROJECTS+=("$string_sem_current")
-    done < <(lxc project list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc project list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_profiles() {
@@ -86,7 +86,7 @@ get_profiles() {
     while read -a fields; do
         local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         PROFILES+=("$prof_name")
-    done < <(lxc --project "$1" profile list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc --project "$1" profile list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_containers() {
@@ -95,7 +95,7 @@ get_containers() {
     while read -a fields; do
         local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         CONTAINERS+=("$prof_name")
-    done < <(lxc --project "$1" list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc --project "$1" list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_volumes() {
@@ -105,7 +105,7 @@ get_volumes() {
         local prof_name=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
         #echo $prof_name
         VOLUMES+=("$prof_name")
-    done < <(lxc --project "$1" storage volume list "$2" --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc --project "$1" storage volume list "$2" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 get_storages() {
     local fields
@@ -114,7 +114,7 @@ get_storages() {
         local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         #echo $prof_name
         STORAGES+=("$prof_name")
-    done < <(lxc --project "$1" storage list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc --project "$1" storage list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_container_stat() {
@@ -123,7 +123,7 @@ get_container_stat() {
     while read -a fields; do
         local STAT=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
         echo ${STAT}
-    done < <(lxc --project "$1" list "$2" --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc --project "$1" list "$2" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_images() {
@@ -132,12 +132,12 @@ get_images() {
     while read -a fields; do
         local FINGERPRINT=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
         IMAGES+=("$FINGERPRINT")
-    done < <(lxc image list --project "$1" --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc image list --project "$1" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 get_bridge() {
     local ret
-    ret=$(lxc network list --format csv 2>/dev/null | grep "$1" 2>"logs/${PROJECT_NAME}/lxc.log")
+    ret=$(lxc network list --format csv 2>/dev/null | grep "$1" 2>>"logs/${PROJECT_NAME}/lxc.log")
     if [ $? -eq 0 ]; then
         return 0
     else
@@ -146,7 +146,7 @@ get_bridge() {
 }
 
 is_cluster() {
-    lxc info | grep "server_clustered: true" >"logs/${PROJECT_NAME}/lxc.log" 2>&1
+    lxc info | grep "server_clustered: true" >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
     if [ $? -eq 0 ]; then
         return 0
     else
@@ -160,7 +160,7 @@ get_cluster_member() {
     while read -a fields; do
         local MEMBERS=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
         CLUSTER_MEMBERS+=("$MEMBERS")
-    done < <(lxc cluster list --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    done < <(lxc cluster list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
 
 is_up() {
@@ -169,14 +169,14 @@ is_up() {
 
     t=0
     while [ $t -le $1 ]; do
-        read -a fields < <(lxc --project "$2" list "$3" --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+        read -a fields < <(lxc --project "$2" list "$3" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
         local running=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
         local ip=$(echo "${fields[2]}" | tr -d '\n\r[:space:]')
         ip="${ip//(eth0)/}"
         ip=${ip/\"/}
 
         if [ "$running" = "RUNNING" -a ! -z "$ip" ]; then
-            $(lxc --project "$2" exec "$3" -- stat /root/.ssh/authorized_keys >"logs/${PROJECT_NAME}/lxc.log" 2>&1)
+            $(lxc --project "$2" exec "$3" -- stat /root/.ssh/authorized_keys >>"logs/${PROJECT_NAME}/lxc.log" 2>&1)
             if [ $? -eq 0 ]; then
                 #echo "STATUS: $running"
                 #echo "IP: $ip"
@@ -194,7 +194,7 @@ is_up() {
 get_instance_ip() {
     local fields
     local IFS=,
-    read -a fields < <(lxc --project "$1" list "$2" --format csv 2>"logs/${PROJECT_NAME}/lxc.log")
+    read -a fields < <(lxc --project "$1" list "$2" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
     local ip=$(echo "${fields[2]}" | tr -d '\n\r[:space:]')
     local justIP="${ip//(eth0)/}"
     justIP=${justIP/\"/}
@@ -215,15 +215,81 @@ is_in_array() {
     return 1
 }
 
-lxc_stop_containers() {
-    echo -e "\n## Stopping project instances...\n"
+get_first_master() {
     local i=0
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
+        if [ "${INSTANCE_TYPE}" == "master" ]; then
+            echo ${INSTANCE_NAME}
+            return 0
+        fi
+    done
+    return 255
+}
 
+drain_workers() {
+    local i=0
+    local master_instance=$(get_first_master)
+    #echo ${master_instance}
+    for ((i = ((${INSTANCES_LENGTH} - 1)); i > 0; i--)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
+        if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
+            local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+            echo "kubectl drain ${INSTANCE_NAME} --ignore-daemonsets --delete-emptydir-data" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
+        fi
+    done
+}
+uncordon_workers() {
+    local i=0
+    local master_instance=$(get_first_master)
+    wait_kube_api_ready "${master_instance}"
+
+    #echo ${master_instance}
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
+        if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
+            local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+            echo "kubectl uncordon ${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
+        fi
+    done
+}
+
+wait_kube_api_ready() {
+    local t=0
+    while [ $t -le ${MAX_WAIT_SECONDS} ]; do
+        lxc --project "${PROJECT_NAME}" exec "$1" -- kubectl get all >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
+        if [ $? -eq 0 ]; then
+            return
+        fi
+        #echo wait api
+        sleep 1
+        t=$((t + 1))
+    done
+    exit 255
+}
+
+lxc_stop_containers() {
+    echo -e "\n## Stopping project instances...\n"
+    local i=0
+
+    drain_workers
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+
+        # /usr/lib/systemd/system-shutdown
+        # #!/bin/sh
+
+        # /usr/bin/umount $(/usr/bin/mount -l -t nfs4 | awk '{print $1}')
+
+        #umount $(mount -l -t nfs4 | awk '{print $1}')
+        # --force --timeout 5
         echo "### Stopping container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") != "STOPPED" ]; then
-            lxc --project "${PROJECT_NAME}" stop "${INSTANCE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" stop "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container stopped"
             else
@@ -239,13 +305,15 @@ lxc_stop_containers() {
 lxc_start_containers() {
     echo -e "\n## Starting project instances...\n"
     local i=0
+    local oldstat=''
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         echo "### Starting the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         local stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        oldstat=${stat}
         if [ ${stat} = "STOPPED" ] || [ ${stat} = "FROZEN" ]; then
-            lxc --project "${PROJECT_NAME}" start "${INSTANCE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" start "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container started"
             else
@@ -256,6 +324,9 @@ lxc_start_containers() {
             echo "#### [OK] The container is already started"
         fi
     done
+    if [ ${oldstat} = "STOPPED" ]; then
+        uncordon_workers
+    fi
 }
 
 lxc_pause_containers() {
@@ -267,7 +338,7 @@ lxc_pause_containers() {
 
         echo "### Pausing the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
         if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") = "RUNNING" ]; then
-            lxc --project "${PROJECT_NAME}" pause "${INSTANCE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" pause "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container paused"
             else
@@ -309,7 +380,7 @@ delete_storage_volumes() {
             fi
 
             local DEVICE_POOL=$(yq -r ".devices.${type}.pool" "${profile_file}")
-            if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+            if [ "x${DEVICE_POOL}" = "xdefault" ] || [ "x${DEVICE_POOL}" = "xnull" ]; then
                 continue
             fi
 
@@ -326,7 +397,7 @@ delete_storage_volumes() {
 
             echo "### Deleting a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
             if is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
-                lxc storage volume delete "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc storage volume delete "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "#### [OK] The storage volume was deleted successfully."
                 else
@@ -386,7 +457,7 @@ delete_storage() {
         echo "### Deleting storage ${STORAGE_NAME} in the ${PROJECT_NAME} project..."
         if is_in_array "${STORAGE_NAME}" "${STORAGES[@]}"; then
             echo "#### Deleting storage ${STORAGE_NAME} in project ${PROJECT_NAME}..."
-            lxc storage delete "${STORAGE_NAME}" --project "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc storage delete "${STORAGE_NAME}" --project "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The storage was deleted successfully."
             else
@@ -481,7 +552,7 @@ create_storage() {
 
                 for ((r = 0; r < ${#CLUSTER_MEMBERS[@]}; r++)); do
                     echo "### Creating storage ${STORAGE_NAME} in the ${PROJECT_NAME} project on member ${CLUSTER_MEMBERS[$r]}..."
-                    lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target="${CLUSTER_MEMBERS[$r]}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                    lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target="${CLUSTER_MEMBERS[$r]}" 2>>"logs/${PROJECT_NAME}/lxc.log"
                     if [ $? -eq 0 ]; then
                         echo "##### [OK] Storage ${STORAGE_NAME} was created in member ${CLUSTER_MEMBERS[$r]}."
                     else
@@ -494,7 +565,7 @@ create_storage() {
             #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target terra
             #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target lxdn1
             echo "#### Creating storage ${STORAGE_NAME} for project ${PROJECT_NAME}..."
-            lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" --project "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" --project "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The storage was created successfully."
             else
@@ -539,7 +610,7 @@ create_storage_volumes() {
             fi
 
             local DEVICE_POOL=$(yq -r ".devices.${type}.pool" "${profile_file}")
-            if [ "x${DEVICE_POOL}" = "xdefault" ]; then
+            if [ "x${DEVICE_POOL}" = "xdefault" ] || [ "x${DEVICE_POOL}" = "xnull" ]; then
                 continue
             fi
 
@@ -556,7 +627,7 @@ create_storage_volumes() {
 
             echo "### Creating a storage volume ${DEVICE_SOURCE} on storage ${DEVICE_POOL}..."
             if ! is_in_array "${DEVICE_SOURCE}" "${VOLUMES[@]}"; then
-                lxc storage volume create "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc storage volume create "${DEVICE_POOL}" "${DEVICE_SOURCE}" --project "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "#### [OK] The storage volume was created successfully."
                 else
@@ -587,7 +658,7 @@ create_lxc_projects() {
     local PROJECT_NAME=$(yq e '.config.lxd.projectName' "${CONFIG_FILE}")
     echo "### Creating the '${PROJECT_NAME}' project in LXC."
     if ! is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
-        lxc project create "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc project create "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Project created"
         else
@@ -624,7 +695,7 @@ create_lxc_bridges() {
 
             for ((o = 0; o < ${#CLUSTER_MEMBERS[@]}; o++)); do
                 echo "#### Creating bridge "${bridge_name}" for project ${PROJECT_NAME} on member ${CLUSTER_MEMBERS[$o]}..."
-                lxc --project "${PROJECT_NAME}" network create "${bridge_name}" --target="${CLUSTER_MEMBERS[$o]}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc --project "${PROJECT_NAME}" network create "${bridge_name}" --target="${CLUSTER_MEMBERS[$o]}" 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] The bridge was created on member ${CLUSTER_MEMBERS[$o]}."
                 else
@@ -634,7 +705,7 @@ create_lxc_bridges() {
             done
         fi
 
-        lxc --project "${PROJECT_NAME}" network create "${bridge_name}" 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc --project "${PROJECT_NAME}" network create "${bridge_name}" 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge created"
         else
@@ -645,7 +716,7 @@ create_lxc_bridges() {
         echo "#### [OK] Bridge exists"
     fi
 
-    lxc --project "${PROJECT_NAME}" network edit "${bridge_name}" < <(cat "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml") 2>"logs/${PROJECT_NAME}/lxc.log"
+    lxc --project "${PROJECT_NAME}" network edit "${bridge_name}" < <(cat "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml") 2>>"logs/${PROJECT_NAME}/lxc.log"
     if [ $? -eq 0 ]; then
         echo "#### [OK] Bridge edited"
     else
@@ -666,7 +737,7 @@ create_lxc_profiles() {
 
         echo "### Creating the '${PROFILE_NAME}' profile in the '${PROJECT_NAME}' LXC project."
         if ! is_in_array "${PROFILE_NAME}" "${PROFILES[@]}"; then
-            lxc --project "${PROJECT_NAME}" profile create "${PROFILE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" profile create "${PROFILE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Profile created"
             else
@@ -680,7 +751,7 @@ create_lxc_profiles() {
         echo "### Applying the settings in the '${PROFILE_NAME}' profile in the '${PROJECT_NAME}' LXC project."
         evolve_templates $(get_lxc_profile_path "projects/${PROJECT_NAME}/lxc/profiles/${PROFILE_NAME}.yaml") "${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
 
-        lxc --project "${PROJECT_NAME}" profile edit "${PROFILE_NAME}" < <(cat ${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml) 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc --project "${PROJECT_NAME}" profile edit "${PROFILE_NAME}" < <(cat ${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml) 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Settings applied"
         else
@@ -714,7 +785,7 @@ create_lxc_instances() {
         if ! is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
             echo "#### With the image '${INSTANCE_IMAGE}'."
             echo "#### With the profile '${PROFILE_NAME}'."
-            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}" ${target} 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" launch "${INSTANCE_IMAGE}" "${INSTANCE_NAME}" --profile "${PROFILE_NAME}" ${target} 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance created"
             else
@@ -740,7 +811,7 @@ delete_lxc_images() {
         for ((o = 0; o < ${#IMAGES[@]}; o++)); do
             echo "#### Deleting image '${IMAGES[$o]}' in project '${PROJECT_NAME}' LXC."
             if is_in_array "${IMAGES[$o]}" "${IMAGES[@]}"; then
-                lxc --project "${PROJECT_NAME}" image delete "${IMAGES[$o]}" 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc --project "${PROJECT_NAME}" image delete "${IMAGES[$o]}" 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] Image deleted"
                 else
@@ -771,7 +842,7 @@ delete_lxc_bridges() {
     local bridge_name=$(yq e ".name" "${LXC_GENERATED_CONFIGS_DIR}/bridge/bridge.yaml")
     echo "### Deleting bridge ${bridge_name} in project '${PROJECT_NAME}'."
     if get_bridge "${bridge_name}"; then
-        lxc network delete "${bridge_name}" 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc network delete "${bridge_name}" 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Bridge deleted"
         else
@@ -798,7 +869,7 @@ delete_lxc_profiles() {
 
         echo "### Deleting profile '${PROFILE_NAME}' in project '${PROJECT_NAME}' LXC."
         if is_in_array "${PROFILE_NAME}" "${PROFILES[@]}"; then
-            lxc --project "${PROJECT_NAME}" profile delete "${PROFILE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" profile delete "${PROFILE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Profile deleted"
             else
@@ -819,6 +890,39 @@ delete_generated_files() {
     #rm -fr "logs/${PROJECT_NAME}"
 }
 
+backupimagesexec() {
+
+    echo '
+    while read IMAGE TAG IMAGEID SIZE; do
+        IMAGENAME=$(basename ${IMAGE})
+        IMAGETAR="${IMAGENAME}-${TAG}.tar"
+
+        #echo "containerd-backup-images/${K8S_VERSION}/${IMAGETAR}"
+        if ! [ -f "/mnt/images/${IMAGETAR}" ]; then
+            echo "Backup ${IMAGETAR}"
+            pullimage=$(ctr image pull "${IMAGE}:${TAG}")
+            exportimage=$(ctr image export "/mnt/images/${IMAGETAR}" "${IMAGE}:${TAG}")
+        fi
+    done < <(crictl images | tail -n +2)
+'
+}
+
+savekubeimages() {
+    local i=0
+
+    for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+        local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
+
+        if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
+            echo "Backingup images from ${INSTANCE_NAME}"
+            backupimagesexec | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"logs/${PROJECT_NAME}/backupimages.log" 2>&1
+        fi
+    done
+    echo
+
+}
+
 destroy() {
 
     echo -e "\n# Destroying LXD's '${PROJECT_NAME}' project...\n"
@@ -837,7 +941,7 @@ destroy() {
     echo "### Deleting the '${PROJECT_NAME}' project in LXC."
     if is_in_array "${PROJECT_NAME}" "${PROJECTS[@]}"; then
         PROJECTS+=("${PROJECT_NAME}")
-        lxc project delete "${PROJECT_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc project delete "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] Project deleted"
         else
@@ -867,7 +971,7 @@ destroyinstances() {
 
         echo "### Destroying the '${INSTANCE_NAME}' container in the '${PROJECT_NAME}' LXC project."
         if is_in_array "${INSTANCE_NAME}" "${CONTAINERS[@]}"; then
-            lxc --project "${PROJECT_NAME}" delete --force "${INSTANCE_NAME}" 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" delete --force "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Instance deleted"
             else
@@ -1335,7 +1439,7 @@ provision_kubernetes_cluster() {
                 fi
 
                 echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file to ${INSTANCE_NAME}"
-                lxc --project "${PROJECT_NAME}" file push -p ${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc --project "${PROJECT_NAME}" file push -p ${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml ${INSTANCE_NAME}/root/kubeadm-init-config.yaml --uid 0 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/init/kubeadm-init-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
                 else
@@ -1397,7 +1501,7 @@ provision_kubernetes_cluster() {
             else
 
                 echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml' configuration file to ${INSTANCE_NAME}"
-                lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-controlpanel-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+                lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-controlpanel-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-controlpanel-config.yaml --uid 0 2>>"logs/${PROJECT_NAME}/lxc.log"
                 if [ $? -eq 0 ]; then
                     echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-controlpanel-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
                 else
@@ -1447,7 +1551,7 @@ provision_kubernetes_cluster() {
             fi
 
             echo "#### Copying the '${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml' configuration file to ${INSTANCE_NAME}"
-            lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+            lxc --project "${PROJECT_NAME}" file push -p "${K8S_GENERATED_CONFIGS_DIR}/join/kubeadm-join-config.yaml" ${INSTANCE_NAME}/root/kubeadm-join-config.yaml --uid 0 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "##### [OK] The '${K8S_GENERATED_CONFIGS_DIR}/kubeadm-join-config.yaml' configuration file has been successfully copied to ${INSTANCE_NAME}"
             else
@@ -1508,7 +1612,7 @@ copysshkey() {
             echo "#### ABORT: The container is not active and/or has not the network configured"
             exit 255
         fi
-        lxc --project "${PROJECT_NAME}" file push projects/SSH-KEY/lxkube.pub ${INSTANCE_NAME}/root/.ssh/authorized_keys --uid 0 2>"logs/${PROJECT_NAME}/lxc.log"
+        lxc --project "${PROJECT_NAME}" file push projects/SSH-KEY/lxkube.pub ${INSTANCE_NAME}/root/.ssh/authorized_keys --uid 0 2>>"logs/${PROJECT_NAME}/lxc.log"
         if [ $? -eq 0 ]; then
             echo "#### [OK] SSH public key copied"
         else
@@ -1749,6 +1853,9 @@ provision)
     ;;
 destroy)
     destroy
+    ;;
+savekubeimages)
+    savekubeimages
     ;;
 stop)
     lxc_stop_containers

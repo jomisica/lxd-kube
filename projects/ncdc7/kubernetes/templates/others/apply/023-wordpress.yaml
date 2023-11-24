@@ -5,7 +5,6 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: local-path
   resources:
     requests:
       storage: 10Gi
@@ -18,7 +17,6 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: local-path
   resources:
     requests:
       storage: 5Gi
@@ -227,7 +225,7 @@ spec:
       serviceAccountName: default
       containers:
         - name: wordpress
-          image: docker.io/bitnami/wordpress:6.3.2-debian-11-r11
+          image: docker.io/bitnami/wordpress:6.4.1-debian-11-r5
           imagePullPolicy: "IfNotPresent"
           securityContext:
             allowPrivilegeEscalation: false
