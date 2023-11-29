@@ -31,7 +31,7 @@ config:
     "
   lxd:
     projectName: ncdc4
-    target: terra # cluster members: terra, marte
+    defaultClusterMemberTarget: terra # default cluster member: terra, marte
   kubernetes:
     clusterName: ncdc4
     version: 1.22.2

@@ -790,21 +790,34 @@ create_lxc_profiles() {
     echo
 }
 
-create_lxc_instances() {
-
-    local target=""
+get_cluster_target_to_instance(){
+    local member_target=""
 
     if is_cluster; then
+        local member_target=${PROJECT_TARGET}
         if ! [ -z "${PROJECT_TARGET}" ]; then
-            target=" --target=${PROJECT_TARGET}"
+            member_target=${PROJECT_TARGET}
         fi
+        local instance_member_target=$(yq e ".config.instances[$1].lxd.clusterMemberTarget" "${CONFIG_FILE}")
+        if ! [ -z "${instance_member_target}" ] && ! [ "x${instance_member_target}" = "xnull" ]; then
+            member_target=${instance_member_target}
+        fi
+        echo " --target=${member_target}"
     fi
+}
+
+create_lxc_instances() {
+
     local i=0
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
+
+        local target=$(get_cluster_target_to_instance "$i")
+        echo "${target}"
+
 
         CONTAINERS=()
         get_containers "${PROJECT_NAME}"
@@ -1722,7 +1735,7 @@ valid_config() {
         exit
     fi
 
-    PROJECT_TARGET=$(yq e '.config.lxd.target' "${CONFIG_FILE}")
+    PROJECT_TARGET=$(yq e '.config.lxd.defaultClusterMemberTarget' "${CONFIG_FILE}")
     if [ "x${PROJECT_TARGET}" = "xnull" ]; then
         PROJECT_TARGET=""
     fi

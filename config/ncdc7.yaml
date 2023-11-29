@@ -8,7 +8,7 @@ config:
     "
   lxd:
     projectName: ncdc7
-    target: terra # cluster members: terra, marte
+    defaultClusterMemberTarget: terra # default cluster member: terra, marte
   kubernetes:
     clusterName: ncdc7
     version: 1.22.2
@@ -22,6 +22,7 @@ config:
       name: ncdc7-khaproxy1
       image: ubuntu:22.04
       profile: ncdc7-khaproxy1
+      clusterMemberTarget: lxdn1 # Create the instance on cluster member lxdn1
     kubernetes:
       type: proxy
   - instance:
@@ -29,6 +30,7 @@ config:
       name: ncdc7-khaproxy2
       image: ubuntu:22.04
       profile: ncdc7-khaproxy2
+      clusterMemberTarget: terra # Create the instance on cluster member lxdn1
     kubernetes:
       type: proxy
   - instance:
@@ -36,6 +38,7 @@ config:
       name: ncdc7-kmaster1
       image: ubuntu:22.04
       profile: ncdc7-kmaster1
+      clusterMemberTarget: lxdn1 # Create the instance on cluster member lxdn1
     kubernetes:
       type: master
   - instance:
@@ -43,6 +46,7 @@ config:
       name: ncdc7-kmaster2
       image: ubuntu:22.04
       profile: ncdc7-kmaster2
+      clusterMemberTarget: terra # Create the instance on cluster member lxdn1
     kubernetes:
       type: master
   - instance:
@@ -50,6 +54,7 @@ config:
       name: ncdc7-kmaster3
       image: ubuntu:22.04
       profile: ncdc7-kmaster3
+      clusterMemberTarget: lxdn1 # Create the instance on cluster member lxdn1
     kubernetes:
       type: master
   - instance:
@@ -57,6 +62,7 @@ config:
       name: ncdc7-kworker1
       image: ubuntu:22.04
       profile: ncdc7-kworker1
+      clusterMemberTarget: terra # Create the instance on cluster member lxdn1
     kubernetes:
       type: worker
   - instance:
@@ -64,6 +70,7 @@ config:
       name: ncdc7-kworker2
       image: ubuntu:22.04
       profile: ncdc7-kworker2
+      clusterMemberTarget: lxdn1 # Create the instance on cluster member lxdn1
     kubernetes:
       type: worker
   - instance:
@@ -71,5 +78,6 @@ config:
       name: ncdc7-kworker3
       image: ubuntu:22.04
       profile: ncdc7-kworker3
+      clusterMemberTarget: terra # Create the instance on cluster member lxdn1
     kubernetes:
       type: worker
