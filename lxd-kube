@@ -232,25 +232,30 @@ drain_workers() {
     local i=0
     local master_instance=$(get_first_master)
     #echo ${master_instance}
-    for ((i = ((${INSTANCES_LENGTH} - 1)); i > 0; i--)); do
+    echo "### Draining nodes."
+
+    for ((i = ((${INSTANCES_LENGTH} - 1)); i >= 0; i--)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
-        if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
+        #if [ "x${INSTANCE_TYPE}" = "xworker" ]; then
+        if [ "x${INSTANCE_TYPE}" = "xmaster" ] || [ "x${INSTANCE_TYPE}" = "xworker" ]; then
             local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
-            echo "kubectl drain ${INSTANCE_NAME} --ignore-daemonsets --delete-emptydir-data" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
+            echo "kubectl drain ${INSTANCE_NAME} --ignore-daemonsets --delete-emptydir-data --force --timeout 120s" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
         fi
     done
 }
+
 uncordon_workers() {
     local i=0
     local master_instance=$(get_first_master)
     wait_kube_api_ready "${master_instance}"
-
+    echo "### Uncordon nodes."
     #echo ${master_instance}
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
-        if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
+        #if [ "x${INSTANCE_TYPE}" = "xworker" ]; then
+        if [ "x${INSTANCE_TYPE}" = "xmaster" ] || [ "x${INSTANCE_TYPE}" = "xworker" ]; then
             local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
             echo "kubectl uncordon ${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
         fi
@@ -271,24 +276,40 @@ wait_kube_api_ready() {
     exit 255
 }
 
-lxc_stop_containers() {
-    echo -e "\n## Stopping project instances...\n"
+start_paused_containers() {
     local i=0
-
-    drain_workers
-
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
-        # /usr/lib/systemd/system-shutdown
-        # #!/bin/sh
+        local stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        if [ ${stat} = "FROZEN" ]; then
+            echo "### The paused '${INSTANCE_NAME}' container will be started before being stopped."
+            lxc --project "${PROJECT_NAME}" start "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
+            if [ $? -eq 0 ]; then
+                echo "#### [OK] Container started"
+                is_up 360 "${PROJECT_NAME}" "${INSTANCE_NAME}"
+            else
+                echo "#### [$?] Error starting container"
+                exit $?
+            fi
+        fi
+    done
+}
 
-        # /usr/bin/umount $(/usr/bin/mount -l -t nfs4 | awk '{print $1}')
+lxc_stop_containers() {
+    start_paused_containers
 
-        #umount $(mount -l -t nfs4 | awk '{print $1}')
-        # --force --timeout 5
+    echo -e "\n## Stopping project instances...\n"
+    local i=0
+    drain_workers
+
+
+    for ((i = ((${INSTANCES_LENGTH} - 1)); i >= 0; i--)); do
+        local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
+
         echo "### Stopping container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
-        if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") != "STOPPED" ]; then
+        local current_stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
+        if [ "x${current_stat}" != "xSTOPPED" ]; then
             lxc --project "${PROJECT_NAME}" stop "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container stopped"
@@ -337,7 +358,9 @@ lxc_pause_containers() {
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
 
         echo "### Pausing the container '${INSTANCE_NAME}' in project '${PROJECT_NAME}'."
-        if [ $(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}") = "RUNNING" ]; then
+        local current_stat=$(get_container_stat "${PROJECT_NAME}" "${INSTANCE_NAME}")
+
+        if [ "x${current_stat}" = "xRUNNING" ]; then
             lxc --project "${PROJECT_NAME}" pause "${INSTANCE_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
                 echo "#### [OK] Container paused"
@@ -346,7 +369,12 @@ lxc_pause_containers() {
                 exit $?
             fi
         else
-            echo "#### [OK] The container is not running"
+            if [ "x${current_stat}" = "xFROZEN" ]; then
+                echo "#### [OK] The container is already paused"
+            fi
+            if [ "x${current_stat}" = "xSTOPPED" ]; then
+                echo "#### [OK] The container is stopped"
+            fi
         fi
     done
 }

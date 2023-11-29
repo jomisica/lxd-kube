@@ -20,10 +20,10 @@ devices:
     type: unix-char
   # Mounting directories with local images to speed up cluster
   # installation and configuration
-  apt-cache:
-    path: /mnt/apt/
-    source: /home/miguel/lxd-kube/apt
-    type: disk
+  # apt-cache:
+  #   path: /mnt/apt/
+  #   source: /home/miguel/lxd-kube/apt
+  #   type: disk
   eth0:
     name: eth0
     hwaddr: 00:16:3e:07:00:02
