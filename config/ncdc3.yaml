@@ -2,7 +2,7 @@ config:
   description: "This example project works on clustered LXD.
     But as it uses a NAT network interface, all containers must be in the same
     member of the LXD cluster, otherwise Kubernetes will not be able to
-    communicate with the nodes. To do this, I use the target option to specify
+    communicate with the nodes. To do this, I use the defaultClusterMemberTarget option to specify
     the LXD member that I need to create containers to be used by Kubernetes. 
     Also, access to Kubernetes does not work from the local network, it only
     works from the machine on which LXD is installed. Access to Kubernetes must
