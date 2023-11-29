@@ -22,7 +22,7 @@ devices:
   # installation and configuration
   apt-cache:
     path: /mnt/apt/
-    source: /home/miguel/lxd-kube/apt
+    source: /mnt/apt/
     type: disk
   eth0:
     name: eth0

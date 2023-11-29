@@ -22,11 +22,11 @@ devices:
   # installation and configuration
   k8s-images-cache:
     path: /mnt/images/
-    source: /home/miguel/lxd-kube/containerd-backup-images/${K8S_VERSION}/
+    source: /mnt/images/${K8S_VERSION}/
     type: disk
   apt-cache:
     path: /mnt/apt/
-    source: /home/miguel/lxd-kube/apt
+    source: /mnt/apt/
     type: disk
   eth0:
     name: eth0

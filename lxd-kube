@@ -956,7 +956,7 @@ savekubeimages() {
         local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
 
         if [ "${INSTANCE_TYPE}" == "master" ] || [ "${INSTANCE_TYPE}" == "worker" ]; then
-            echo "Backingup images from ${INSTANCE_NAME}"
+            echo "Backing up images from ${INSTANCE_NAME}"
             backupimagesexec | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"logs/${PROJECT_NAME}/backupimages.log" 2>&1
         fi
     done
