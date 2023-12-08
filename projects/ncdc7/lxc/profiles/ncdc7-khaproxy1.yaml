@@ -38,5 +38,3 @@ devices:
     path: /
     pool: default
     type: disk
-name: ${PROJECT_NAME}-khaproxy1
-used_by: []

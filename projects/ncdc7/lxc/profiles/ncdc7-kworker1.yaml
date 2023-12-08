@@ -42,5 +42,3 @@ devices:
     path: /
     pool: default
     type: disk
-name: ${PROJECT_NAME}-kworker1
-used_by: []

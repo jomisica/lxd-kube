@@ -103,7 +103,6 @@ get_volumes() {
     local IFS=,
     while read -a fields; do
         local prof_name=$(echo "${fields[1]}" | tr -d '\n\r[:space:]')
-        #echo $prof_name
         VOLUMES+=("$prof_name")
     done < <(lxc --project "$1" storage volume list "$2" --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
@@ -112,7 +111,6 @@ get_storages() {
     local IFS=,
     while read -a fields; do
         local prof_name=$(echo "${fields[0]}" | tr -d '\n\r[:space:]')
-        #echo $prof_name
         STORAGES+=("$prof_name")
     done < <(lxc --project "$1" storage list --format csv 2>>"logs/${PROJECT_NAME}/lxc.log")
 }
@@ -228,19 +226,32 @@ get_first_master() {
     return 255
 }
 
+get_cluster_target_to_instance() {
+    local member_target=""
+
+    if is_cluster; then
+        local member_target=${PROJECT_TARGET}
+        if ! [ -z "${PROJECT_TARGET}" ]; then
+            member_target=${PROJECT_TARGET}
+        fi
+        local instance_member_target=$(yq e ".config.instances[$1].lxd.clusterMemberTarget" "${CONFIG_FILE}")
+        if ! [ -z "${instance_member_target}" ] && ! [ "x${instance_member_target}" = "xnull" ]; then
+            member_target=${instance_member_target}
+        fi
+        echo " --target=${member_target}"
+    fi
+}
+
 drain_workers() {
     local i=0
     local master_instance=$(get_first_master)
-    #echo ${master_instance}
     echo "### Draining nodes."
-
     for ((i = ((${INSTANCES_LENGTH} - 1)); i >= 0; i--)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
-        #if [ "x${INSTANCE_TYPE}" = "xworker" ]; then
         if [ "x${INSTANCE_TYPE}" = "xmaster" ] || [ "x${INSTANCE_TYPE}" = "xworker" ]; then
             local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
-            echo "kubectl drain ${INSTANCE_NAME} --ignore-daemonsets --delete-emptydir-data --force --timeout 120s" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
+            echo "kubectl drain ${INSTANCE_NAME} --ignore-daemonsets --delete-emptydir-data --force --timeout=${MAX_WAIT_SECONDS}s" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
         fi
     done
 }
@@ -248,13 +259,11 @@ drain_workers() {
 uncordon_workers() {
     local i=0
     local master_instance=$(get_first_master)
-    wait_kube_api_ready "${master_instance}"
+    kube_wait_api_ready "${master_instance}"
     echo "### Uncordon nodes."
-    #echo ${master_instance}
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_TYPE=$(yq e ".config.instances[$i].kubernetes.type" "${CONFIG_FILE}")
-        #if [ "x${INSTANCE_TYPE}" = "xworker" ]; then
         if [ "x${INSTANCE_TYPE}" = "xmaster" ] || [ "x${INSTANCE_TYPE}" = "xworker" ]; then
             local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
             echo "kubectl uncordon ${INSTANCE_NAME}" | lxc --project "${PROJECT_NAME}" exec "${master_instance}" -- bash >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
@@ -262,14 +271,13 @@ uncordon_workers() {
     done
 }
 
-wait_kube_api_ready() {
+kube_wait_api_ready() {
     local t=0
     while [ $t -le ${MAX_WAIT_SECONDS} ]; do
         lxc --project "${PROJECT_NAME}" exec "$1" -- kubectl get all >>"logs/${PROJECT_NAME}/lxc.log" 2>&1
         if [ $? -eq 0 ]; then
             return
         fi
-        #echo wait api
         sleep 1
         t=$((t + 1))
     done
@@ -302,7 +310,6 @@ lxc_stop_containers() {
     echo -e "\n## Stopping project instances...\n"
     local i=0
     drain_workers
-
 
     for ((i = ((${INSTANCES_LENGTH} - 1)); i >= 0; i--)); do
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
@@ -387,19 +394,13 @@ delete_storage_volumes() {
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
 
         local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
-        #echo $profile_file
         if ! [ -f "${profile_file}" ]; then
             echo "#### [OK] Profile generated file do not exists"
             echo
             return 0
         fi
 
-        #local PROFILE_DEVICES=$(yq e ".devices" "${profile_file}")
-        #echo "${PROFILE_DEVICES}"
-
         local PROFILE_DEVICES_LENGTH=$(yq -r ".devices | keys | length" "${profile_file}")
-        #echo "${PROFILE_DEVICES_LENGTH}"
-
         for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
             local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
             local DEVICE_NAME=$(yq -r ".devices.${type}.type" "${profile_file}")
@@ -413,12 +414,6 @@ delete_storage_volumes() {
             fi
 
             local DEVICE_SOURCE=$(yq -r ".devices.${type}.source" "${profile_file}")
-            # if [ "x${DEVICE_POOL}" = "xdefault" ]; then
-            #     continue
-            # fi
-            #echo $DEVICE_NAME
-            #echo $DEVICE_POOL
-            #echo $DEVICE_SOURCE
 
             local VOLUMES=()
             get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
@@ -460,12 +455,9 @@ delete_storage() {
 
     for TEMPLATE in ${templates}; do
 
-        #echo ${TEMPLATE}
         local IFS=$(echo -en "\n\b")
-
         local file_name=$(basename ${TEMPLATE})
 
-        #evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
         if ! [ -f "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}" ]; then
             echo "#### [OK] Storage generated file do not exists"
             continue
@@ -496,9 +488,6 @@ delete_storage() {
 
     done
     echo "## END Deleting storage for project in LXC."
-
-    #exit
-    #lxc storage list --project "${PROJECT_NAME}"
     echo
 }
 
@@ -521,15 +510,11 @@ create_storage() {
     echo "## Creating the storages for the ${PROJECT_NAME} project..."
 
     for TEMPLATE in ${templates}; do
-
-        #echo ${TEMPLATE}
         local IFS=$(echo -en "\n\b")
 
         local file_name=$(basename ${TEMPLATE})
 
         evolve_templates "${TEMPLATE}" "${LXC_GENERATED_CONFIGS_DIR}/storage/${file_name}"
-
-        #${TEMPLATE}
 
         local loopdevice=false
 
@@ -562,12 +547,7 @@ create_storage() {
             STORAGE_SIZE=" size=${STORAGE_SIZE}"
 
         fi
-        # echo ${STORAGE_NAME}
-        # echo ${STORAGE_DRIVER}
-        # echo ${STORAGE_SOURCE}
-        # echo ${STORAGE_SIZE}
 
-        # exit
         local STORAGES=()
         get_storages "${PROJECT_NAME}"
 
@@ -590,8 +570,6 @@ create_storage() {
                 done
             fi
 
-            #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target terra
-            #lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" ${STORAGE_SOURCE} ${STORAGE_SIZE} --project "${PROJECT_NAME}" --target lxdn1
             echo "#### Creating storage ${STORAGE_NAME} for project ${PROJECT_NAME}..."
             lxc storage create "${STORAGE_NAME}" "${STORAGE_DRIVER}" --project "${PROJECT_NAME}" 2>>"logs/${PROJECT_NAME}/lxc.log"
             if [ $? -eq 0 ]; then
@@ -607,9 +585,6 @@ create_storage() {
 
     done
     echo "## END Creating storage for project in LXC."
-
-    #exit
-    #lxc storage list --project "${PROJECT_NAME}"
     echo
 }
 
@@ -620,15 +595,8 @@ create_storage_volumes() {
 
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
-
         local profile_file="${LXC_GENERATED_CONFIGS_DIR}/profiles/${PROFILE_NAME}.yaml"
-        #echo $profile_file
-
-        #local PROFILE_DEVICES=$(yq e ".devices" "${profile_file}")
-        #echo "${PROFILE_DEVICES}"
-
         local PROFILE_DEVICES_LENGTH=$(yq -r ".devices | keys | length" "${profile_file}")
-        #echo "${PROFILE_DEVICES_LENGTH}"
 
         for ((o = 0; o < ${PROFILE_DEVICES_LENGTH}; o++)); do
             local type=$(yq -r ".devices | keys | .[$o]" "${profile_file}")
@@ -643,12 +611,6 @@ create_storage_volumes() {
             fi
 
             local DEVICE_SOURCE=$(yq -r ".devices.${type}.source" "${profile_file}")
-            # if [ "x${DEVICE_POOL}" = "xdefault" ]; then
-            #     continue
-            # fi
-            #echo $DEVICE_NAME
-            #echo $DEVICE_POOL
-            #echo $DEVICE_SOURCE
 
             local VOLUMES=()
             get_volumes "${PROJECT_NAME}" ${DEVICE_POOL}
@@ -666,18 +628,10 @@ create_storage_volumes() {
                 echo "#### [OK] The storage volume already exists."
             fi
 
-            #lxc storage volume list ${DEVICE_POOL} --project "${PROJECT_NAME}"
-
         done
     done
     echo "## END Creating storage volumes for project."
     echo
-
-    #lxc storage create NAME dir --project ncdc3 --target terra
-    #lxc storage create NAME dir --project ncdc3 --target lxdn1
-    #lxc storage create NAME dir --project ncdc3
-    #lxc storage volume create NAME ncdc3 --project ncdc3
-    #echo aaaa
 }
 
 create_lxc_projects() {
@@ -712,8 +666,6 @@ create_lxc_bridges() {
         echo "#### Error creating the bridge ${bridge_name}, the bridge name cannot be longer than 15 characters."
         exit 255
     fi
-
-    #echo ${bridge_name}
 
     if ! get_bridge "${bridge_name}"; then
 
@@ -790,22 +742,6 @@ create_lxc_profiles() {
     echo
 }
 
-get_cluster_target_to_instance(){
-    local member_target=""
-
-    if is_cluster; then
-        local member_target=${PROJECT_TARGET}
-        if ! [ -z "${PROJECT_TARGET}" ]; then
-            member_target=${PROJECT_TARGET}
-        fi
-        local instance_member_target=$(yq e ".config.instances[$1].lxd.clusterMemberTarget" "${CONFIG_FILE}")
-        if ! [ -z "${instance_member_target}" ] && ! [ "x${instance_member_target}" = "xnull" ]; then
-            member_target=${instance_member_target}
-        fi
-        echo " --target=${member_target}"
-    fi
-}
-
 create_lxc_instances() {
 
     local i=0
@@ -814,10 +750,7 @@ create_lxc_instances() {
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
         local INSTANCE_NAME=$(yq e ".config.instances[$i].lxd.name" "${CONFIG_FILE}")
         local INSTANCE_IMAGE=$(yq e ".config.instances[$i].lxd.image" "${CONFIG_FILE}")
-
         local target=$(get_cluster_target_to_instance "$i")
-        echo "${target}"
-
 
         CONTAINERS=()
         get_containers "${PROJECT_NAME}"
@@ -1173,7 +1106,7 @@ apply_cni_configs() {
         cat "${K8S_GENERATED_CONFIGS_DIR}/cni/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply --server-side --force-conflicts -f - >>"logs/${PROJECT_NAME}/cni.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "###### [OK] The template was applied successfully."
-            wait_phase
+            wait_phase_cdrs
         else
             echo "###### [$?] Error applying the template."
             exit 255
@@ -1210,7 +1143,7 @@ apply_csi_configs() {
         cat "${K8S_GENERATED_CONFIGS_DIR}/csi/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply --server-side --force-conflicts -f - >>"logs/${PROJECT_NAME}/csi.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "###### [OK] The template was applied successfully."
-            wait_phase
+            wait_phase_cdrs
         else
             echo "###### [$?] Error applying the template."
             exit 255
@@ -1218,7 +1151,52 @@ apply_csi_configs() {
     done
 }
 
-wait_phase() {
+wait_phase_cdrs() {
+    #   for i in $(kubectl api-resources --verbs=list --namespaced -o name | grep -v "events.events.k8s.io" | grep -v "events" | sort | uniq); do
+    #     echo "Resource:" $i
+    #     kubectl -A get --ignore-not-found ${i}
+    #   done
+    #   --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"
+    # kubectl get pod -o custom-columns=:.metadata.name  --no-headers
+    # kubectl get secret wordpress -o yaml --template='{{index .metadata.labels}}'
+    # kubectl get pod -A -o custom-columns=:.status.phase --no-headers
+
+    # kubectl wait --for=condition=Ready nodes --all --timeout=600s
+    # kubectl wait pod --all --for=condition=Ready -A --timeout=600s
+    # kubectl wait --for condition=Established --all CustomResourceDefinition -A
+
+    #sleep 5
+    #kubectl wait --for=condition=Ready nodes --all --timeout=600s
+    #kubectl wait pod --all --for=condition=Ready -A --timeout=600s
+    #kubectl wait --for condition=Established --all CustomResourceDefinition -A
+
+    # lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait CustomResourceDefinition --all --for=condition=Established -A --timeout=${MAX_WAIT_SECONDS}s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+    # lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait pod --all --for=condition=Ready -A --timeout=${MAX_WAIT_SECONDS}s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+
+    # return
+
+    local t=0
+    if [ ${WAIT_CDRs} = true ]; then
+        while [ $t -le ${MAX_WAIT_SECONDS} ]; do
+            #echo "#### This template has Custom Resource Definitions that need to be applied."
+            lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait CustomResourceDefinition --all --for=condition=Established -A --timeout=${MAX_WAIT_SECONDS}s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+            if [ $? -eq 0 ]; then
+                WAIT_CDRs=false
+                wait_phase_pods
+                return
+            else
+                continue
+            fi
+
+            sleep 1
+            t=$((t + 1))
+        done
+    else
+        return
+    fi
+}
+
+wait_phase_pods() {
     #   for i in $(kubectl api-resources --verbs=list --namespaced -o name | grep -v "events.events.k8s.io" | grep -v "events" | sort | uniq); do
     #     echo "Resource:" $i
     #     kubectl -A get --ignore-not-found ${i}
@@ -1244,16 +1222,7 @@ wait_phase() {
 
     local t=0
     while [ $t -le ${MAX_WAIT_SECONDS} ]; do
-        if [ ${WAIT_CDRs} = true ]; then
-            #echo "#### This template has Custom Resource Definitions that need to be applied."
-            lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait CustomResourceDefinition --all --for=condition=Established -A --timeout=5s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
-            if [ $? -eq 0 ]; then
-                WAIT_CDRs=false
-            else
-                continue
-            fi
-        fi
-        lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait pod --all --for=condition=Ready -A --timeout=5s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
+        lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl wait pod --all --for=condition=Ready -A --timeout=${MAX_WAIT_SECONDS}s >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
         if [ $? -eq 0 ]; then
             return
         fi
@@ -1264,7 +1233,6 @@ wait_phase() {
 
 verify_resources() {
     WAIT_CDRs=false
-    #echo "$1"
     local i=0
     local DOCs_LENGTH=$(yq ea '[.] | length' "$1")
     for ((i = 0; i < ${DOCs_LENGTH}; i++)); do
@@ -1305,13 +1273,12 @@ apply_others_configs() {
         evolve_templates "${TEMPLATE}" "${K8S_GENERATED_CONFIGS_DIR}/others/apply/${file_name}"
 
         verify_resources "${K8S_GENERATED_CONFIGS_DIR}/others/apply/${file_name}"
-        #echo ${TEMPLATE}
 
         echo "#### Applying the ${file_name} template to Kubernetes."
         cat "${K8S_GENERATED_CONFIGS_DIR}/others/apply/${file_name}" | lxc --project "${PROJECT_NAME}" exec "${K8S_MASTER_INSTANCE_NAME}" -- kubectl apply --server-side --force-conflicts -f - >>"logs/${PROJECT_NAME}/others-apply.log" 2>&1
         if [ $? -eq 0 ]; then
             echo "##### [OK] The template was applied successfully."
-            wait_phase
+            wait_phase_cdrs
         else
             echo "##### [$?] Error applying the template."
             exit 255
@@ -1370,12 +1337,6 @@ get_node_stat() {
 }
 
 provision_kubernetes_cluster() {
-
-    # if [ ${K8S_KUBE_CONTROLPLANE_HA} = true ]; then
-    #     build_proxy_payload_content
-    #     exit
-    # fi
-
     local i=0
     for ((i = 0; i < ${INSTANCES_LENGTH}; i++)); do
         local PROFILE_NAME=$(yq e ".config.instances[$i].lxd.profile" "${CONFIG_FILE}")
@@ -1392,18 +1353,20 @@ provision_kubernetes_cluster() {
         INSTANCE_LOG_DIR=logs/${PROJECT_NAME}/${INSTANCE_NAME}
 
         if [[ "${INSTANCE_TYPE}" == "proxy" ]]; then
-            echo "## Running the proxy bootstrap script in project ${PROJECT_NAME}..."
+            echo "### Configuring the proxy: ${INSTANCE_NAME}"
+            echo "#### Running the proxy bootstrap script in project ${PROJECT_NAME}..."
             if [ -f "projects/${PROJECT_NAME}/kubernetes/bootstrap/proxy.sh" ]; then
                 build_proxy_payload_content | lxc --project "${PROJECT_NAME}" exec "${INSTANCE_NAME}" -- bash >>"logs/${PROJECT_NAME}/proxybootstrap.log" 2>&1
                 if [ $? -eq 0 ]; then
-                    echo "### [OK] The bootstrap script ran without problems."
+                    echo "##### [OK] The bootstrap script ran without problems."
                 else
-                    echo "### [$?] An error status was returned when running the bootstrap script."
+                    echo "##### [$?] An error status was returned when running the bootstrap script."
                     exit 255
                 fi
             else
-                echo "### The project has no bootstrap scripts to apply."
+                echo "##### The project has no bootstrap scripts to apply."
             fi
+            echo "### END Configuring the proxy: ${INSTANCE_NAME}"
         fi
 
         if [[ "${INSTANCE_TYPE}" == "master" ]]; then
@@ -1561,7 +1524,6 @@ provision_kubernetes_cluster() {
 
             fi
             echo "### END Configuring the master plane: ${INSTANCE_NAME}"
-            #exit
         fi
 
         if [[ "${INSTANCE_TYPE}" == "worker" ]]; then
@@ -1615,8 +1577,11 @@ provision_kubernetes_cluster() {
 
     apply_cni_configs
     apply_csi_configs
+
     # Applying other templates to project xxxxx
     apply_others_configs
+
+    wait_phase_pods
 
     # This script will run after basic kubernetes boots. With it we can install
     # and configure one or many applications for a given project. Using the

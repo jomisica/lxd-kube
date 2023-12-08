@@ -42,5 +42,3 @@ devices:
     path: /
     pool: default
     type: disk
-name: ${PROJECT_NAME}-kmaster2
-used_by: []
